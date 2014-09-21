@@ -1,0 +1,277 @@
+#!/bin/bash
+#--------------------------------------------------
+# Problem set 1
+# Jin Rou New, 12 Sep 2014
+#--------------------------------------------------
+# Question 2
+grep processor /proc/cpuinfo
+# Number of (virtual) processors = 0
+# RAM = 1024MB
+#==================================================
+# Question 3
+# (a) (i) Extract data for Republican and Democratic candidates for Senate into two files
+# Download CSV file
+candidate_filepath="http://www.fec.gov/data/CandidateSummary.do?format=csv"
+wget data/candidate_summary.csv $candidate_filepath
+
+# Create two files with header (note: tee outputs to console and file)
+# head -n1 candidate_summary.csv | tee candidates_rep.csv > candidates_dem.csv
+# Change below command to append instead of replace file (>> not >)
+
+# Append filtered data to relevant files
+grep '"S",' candidate_summary.csv | grep '"REP",' > candidates_rep.csv
+grep '"S",' candidate_summary.csv | grep '"DEM",' > candidates_dem.csv
+#--------------------------------------------------
+# (a) (ii) Process file and extract total contributions to and info about each candidate, sorting on the total contributions
+# Remove any comma not preceded by a double quote
+# or another comma and remove the $ and double quote
+# from a data file
+  
+function process_file() {
+  local data_filepath="$1" ##<< Data file path
+  # (Note: -i to edit file in place, -e to execute multiple sed commands)
+  sed -e 's/\([^",]\),/\1/g' \
+    -e 's/[$"]//g' $data_filepath
+}
+process_file data/candidates_rep.csv > data/candidates_rep_final.csv
+process_file data/candidates_dem.csv > data/candidates_dem_final.csv
+
+# Get the num candidates with the largest total contributions
+# (by individuals) and amount of contributions (sorted) and
+# info about each candidate
+# First sort by general numeric reverse order based on
+# field 16, with fields delimited by comma
+
+function get_largest_contributions() {
+  local data_filepath="$1" ##<< Data file path
+  local num="$2" ##<< Number of candidates to print
+  
+  echo "The $num candidates with the largest total contributions from individuals are:"
+  echo "Candidate ID,Name,Office State;Type;Total contributions from individuals($):"
+  sort -gr -t',' -k14 $data_filepath \
+	| head -n $num \
+	| cut -d',' -f2,3,5,8,16
+}
+get_largest_contributions data/candidates_rep_final.csv 5
+# The 5 candidates with the largest total contributions are:
+# Candidate ID,Name,Office State;Type;Total contributions from individuals($):
+# S2KY00012,MCCONNELL MITCH,KY,INCUMBENT,8991643.00
+# S2TX00106,CORNYN JOHN,TX,INCUMBENT,6903804.00
+# S4AR00103,COTTON THOMAS,AR,CHALLENGER,5558956.11
+# S4LA00107,CASSIDY WILLIAM,LA,CHALLENGER,5186351.00
+# S0SC00149,GRAHAM LINDSEY OLIN,SC,INCUMBENT,5104768.00
+
+get_largest_contributions data/candidates_dem_final.csv 5
+# The 5 candidates with the largest total contributions are:
+# Candidate ID,Name,Office State;Type;Total contributions from individuals($):
+# S4MA00028,MARKEY EDWARD JOHN MR,MA,INCUMBENT,14668778.00
+# S4NJ00185,BOOKER CORY A,NJ,INCUMBENT,14128197.00
+# S8NC00239,HAGAN KAY R,NC,INCUMBENT,10456106.00
+# S4KY00091,GRIMES ALISON  LUNDERGAN,KY,CHALLENGER,10290296.00
+# S4GA11277,NUNN MARY MICHELLE,GA,OPEN,8016437.00
+
+# above $200!!
+S2KY00012,MCCONNELL MITCH,KY,INCUMBENT,8991643.00
+S2TX00106,CORNYN JOHN,TX,INCUMBENT,6903804.00
+S0SC00149,GRAHAM LINDSEY OLIN,SC,INCUMBENT,5104768.00
+S4LA00107,CASSIDY WILLIAM,LA,CHALLENGER,5186351.00
+S4AR00103,COTTON THOMAS,AR,CHALLENGER,5558956.11
+
+Candidate ID,Name,Office State;Type;Total contributions from individuals($):
+S4NJ00185,BOOKER CORY A,NJ,INCUMBENT,14128197.00
+S4MA00028,MARKEY EDWARD JOHN MR,MA,INCUMBENT,14668778.00
+S8NC00239,HAGAN KAY R,NC,INCUMBENT,10456106.00
+S4KY00091,GRIMES ALISON  LUNDERGAN,KY,CHALLENGER,10290296.00
+S6VA00093,WARNER MARK ROBERT,VA,INCUMBENT,7654971.00
+
+#--------------------------------------------------
+# (b)
+# Install wget for Mac if needed (assuming prior installation of Homebrew)
+# brew install wget
+
+# Download FEC data on individual contributions to candidates and unzip files
+commid_filepath="ftp://ftp.fec.gov/FEC/2014/cn14.zip"
+indcont_filepath="ftp://ftp.fec.gov/FEC/2014/indiv14.zip"
+wget $commid_filepath 
+unzip cn14.zip
+wget $indcont_filepath
+unzip indiv14.zip
+
+# Get principal committee ID/number given [last name] or 
+# [last name, (part of) first name] of candidate.
+# Function outputs an message if there is no match
+# for the candidate or if there are multiple matches.
+function get_PCN() {
+  local last_name="$1" ##<< String of form [lastname] or [lastname, firstname]
+  local last_name_input
+  
+  # Check user input
+  echo "$last_name" | grep -q "," # Check if there is a comma in the user input, indicating that the input is of the form [last name, (part of) first name]
+  if [ $? -eq 0 ] # $? holds exit status of the previously executed command
+  then
+    last_name_input="|$last_name" # grep for input
+  else
+    last_name_input="|$last_name," # grep for input followed by a comma
+  fi
+  
+  num_matches=$(grep -i "$last_name_input" cn.txt \
+    | wc -l)
+
+  if [ $num_matches -eq 1 ]
+  then
+    PCN=$(grep -i "$last_name_input" cn.txt \
+	  | cut -d'|' -f10)
+	if [ $(echo "$PCN" | wc -w) -ne 0 ]
+	then
+	  echo $PCN
+	else
+	  echo "No principal committee ID available for candidate $last_name."
+	fi
+  elif [ $num_matches -eq 0 ]
+  then
+    echo "No matches found."
+  else
+    echo "More than 1 match found. Please input [lastname, firstname] to obtain a unique match if your input was of the form [lastname]."
+    grep -i "$last_name_input" cn.txt \
+      | cut -d'|' -f2 # Display all matched names
+  fi
+}
+
+# Tests
+# get_PCN "Roby"
+# get_PCN "Coxxx"
+# get_PCN "Cox"
+# get_PCN "Cox, Chris"
+# get_PCN "Cook, Don" # No ID available ### -bash: [: !=: unary operator expected
+# No principal committee ID available for candidate Cook, Don. ### Q: WHYYYYY what unary operator?? code was if [ $PCN == != "" ]
+
+# Get number of individual contributions to candidate above $200 nationwide and for California given [last name] or
+# [last name, part of first name]
+function get_contributions_above200() {
+  local last_name="$1" ##<< String of form [lastname] or [lastname, firstname]
+  local PCN
+  PCN=$(get_PCN "$last_name")
+  
+  if [ $(echo "$PCN" | wc -w) -ne 1 ]
+  then
+    echo "$PCN"
+  else
+	awk -v last_name="$last_name" -v PCN="$PCN" 'BEGIN {
+	    count = 0;
+		count_CA = 0;
+	  }
+	  {
+	    if ($1 == PCN && $7 == "IND" && $15 > 200) {
+		  count++;
+		  if ($10 == "CA") {
+		    count_CA++;
+		  }
+	    }
+	  }
+	  END {
+	    print "Candidate "last_name, "with principal committee ID "PCN, "has "count, "contributions from individuals above $200 nationwide and "count_CA, "such contributions from California.";
+	  }' FS='|' itcont.txt
+  fi
+}
+
+# Compare the two candidates for the Kentucky Senate seat, Mitch McConnell and Alison Lundergan Grimes
+get_contributions_above200 "McConnell, Mitch"
+# Candidate McConnell, Mitch with principal committee ID C00193342 has 6495 contributions from individuals above $200 nationwide and 275 such contributions from California.
+
+get_contributions_above200 "Grimes, Alison"
+# Candidate Grimes, Alison with principal committee ID C00547083 has 6075 contributions from individuals above $200 nationwide and 978 such contributions from California.
+
+#--------------------------------------------------
+# No principal committee ID available for candidate Cook, Don. ### Q: WHYYYYY what unary operator?? code was if [ $PCN != "" ]
+#--------------------------------------------------
+# (c)
+# Get number and total amount of individual contributions 
+# to candidate given [last name] or 
+# [last name, part of first name]
+function get_contributions() {
+  local last_name="$1" ##<< String of form [lastname] or [lastname, firstname]
+  local PCN
+  PCN=$(get_PCN "$last_name")
+
+  if [ $(echo "$PCN" | wc -w) -ne 1 ]
+  then
+    echo "$PCN"
+  else
+    awk -v last_name="$last_name" -v PCN="$PCN" 'BEGIN {
+      count = 0;
+	  amount = 0;
+    } 
+    {
+      if ($1 == PCN && $7 == "IND" ) {
+	    count++;
+	    amount+=$15;
+	  }
+    }
+    END {
+      print "Candidate "last_name, "with principal committee ID "PCN, "has "count, "contributions totalling $"amount, ".";
+  }' FS='|' itcont.txt
+  fi
+}
+
+# Modify internal field separater IFS
+IFS=:
+candidates="ABELER":"ABRAHAMS":"ACKERMAN":"ACOSTA":"ADAME":"ADCOCK":"ADEN":"ADLER"
+for candidate in $candidates
+do
+    get_contributions $candidate
+done
+# Restore default IFS
+IFS=$' \t\n'
+# Candidate ABELER with principal committee ID C00546630 has 185 contributions totalling $106240.
+# Candidate ABRAHAMS with principal committee ID C00555292 has 172 contributions totalling $145157.
+# Candidate ACKERMAN with principal committee  ID C00165241 has 0 contributions totalling $0.
+# Candidate ACOSTA with principal committee ID C00517706 has 0 contributions totalling $0.
+# Candidate ADAME with principal committee ID C00552943 has 11 contributions totalling $5365.
+# Candidate ADCOCK with principal committee ID C00557389 has 39 contributions totalling $62622.
+# Candidate ADEN with principal committee ID C00502138 has 1 contributions totalling $510.
+# Candidate ADLER with principal committee ID C00512475 has 1 contributions totalling $250.
+#--------------------------------------------------
+# CHECKS
+candidates="MCCONNELL, MITCH":"CORNYN, JOHN":"COTTON, THOMAS":"CASSIDY, WILLIAM":"GRAHAM, LINDSEY OLI":"MARKEY, EDWARD JOHN MR":"BOOKER, CORY A":"HAGAN, KAY R":"GRIMES, ALISON  LUNDERGAN":"NUNN, MARY MICHELLE"
+
+# Candidate MCCONNELL, MITCH with ID C00193342 has 6744 contributions totalling $8286320
+# Candidate CORNYN, JOHN with ID C00369033 has 5465 contributions totalling $6361896
+# Candidate GRAHAM, LINDSEY OLI with ID C00458828 has 5080 contributions totalling $4961324
+# Candidate MARKEY, EDWARD JOHN MR with ID C00196774 has 11006 contributions totalling $11116534
+# Candidate BOOKER, CORY A with ID C00540500 has 9390 contributions totalling $12123431
+# Candidate HAGAN, KAY R with ID C00457622 has 3128 contributions totalling $2523173
+# Candidate GRIMES, ALISON  LUNDERGAN with ID C00547083 has 6449 contributions totalling $6300726
+# Candidate NUNN, MARY MICHELLE with ID C00547414 has 5272 contributions totalling $4796326
+
+# S2KY00012,MCCONNELL MITCH,KY,INCUMBENT,8991643.00
+# S2TX00106,CORNYN JOHN,TX,INCUMBENT,6903804.00
+# S4AR00103,COTTON THOMAS,AR,CHALLENGER,5558956.11
+# S4LA00107,,LA,CHALLENGER,5186351.00
+# S0SC00149,GRAHAM LINDSEY OLIN,SC,INCUMBENT,5104768.00
+# MARKEY EDWARD JOHN MR,MA,INCUMBENT,14668778.00
+# S4NJ00185,BOOKER CORY A,NJ,INCUMBENT,14128197.00
+# S8NC00239,HAGAN KAY R,NC,INCUMBENT,10456106.00
+# S4KY00091,GRIMES ALISON  LUNDERGAN,KY,CHALLENGER,10290296.00
+# S4GA11277,NUNN MARY MICHELLE,GA,OPEN,8016437.00
+#==================================================
+# Question 4
+# Download HTML index file
+html_filepath="http://www1.ncdc.noaa.gov/pub/data/ghcn/daily/"
+curl $html_filepath > index.html
+# Alternatively,
+# wget -O index.html $html_filepath
+
+# Extract file names of .txt files
+txt_files=$(grep -o "href=\".*.txt\"" index.html | cut -d'"' -f2)
+# Alternatively:
+# txt_files=$(grep -o "href=\".*.txt\"" index.html | sed -e 's/href=\"//' -e 's/\"//')
+
+for txt_file in $txt_files
+do
+  echo "Downloading $html_filepath${txt_file}"
+  wget $html_filepath${txt_file}
+  echo "--------------------------------------------------"
+done
+#==================================================
+# Notes
+# Comparison operators differ between bash and awk
