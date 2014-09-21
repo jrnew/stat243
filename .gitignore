@@ -1,10 +1,22 @@
 .DS_Store
 
+
 # History files
 .Rhistory
+*.Rproj
 
 # Example code in package build process
 *-Ex.R
 
 # R data files from past sessions
 .Rdata
+.Rproj.user
+
+# Knitr files
+ps*/data
+ps*/cache
+ps*/figure
+ps*/*.aux
+ps*/*.log
+
+example-knitr
