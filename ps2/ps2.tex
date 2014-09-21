@@ -1,0 +1,153 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+
+\title{STAT 243: Problem Set 2}
+\author{Jin Rou New}
+\date{\today}
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+First open an input file connection to the \texttt{bz2} file using \texttt{bzfile}, then read in the first block of data with \texttt{read.csv}. Subset the data according to the given column index and subset value, then stratify the data with \texttt{split} and output stratified data to respective \texttt{bz2} files by opening output file connections using again \texttt{bzfile} and writing to the connections with \texttt{read.table}. Close output file connections, then read in the next block of data. While this reading step does not produce an error, repeat previous data processing steps.
+
+% # Read and process blocks while there are still rows to be read and processed
+% while (!class(data) == "try-error") {
+%   data_subset <- data[as.character(data[, var_subset]) == value_subset, ] # Subset data
+%   data_strata_list <- split(data_subset, data_subset[, var_stratify]) # Stratify data
+%   for (stratum in names(data_strata_list)) { # Output data strata to respective bz2 files
+%     data_filepath_out <- file.path(output_dir, paste0(stratum, ".csv.bz2"))
+%     con_out <- bzfile(data_filepath_out, "at") # Open output file connection (for appending)
+%     write.table(data_strata_list[[stratum]], row.names = FALSE, col.names = FALSE, sep = ",", 
+%                 file = con_out, append = TRUE) # Write to file connection
+%     close(con_out) # Close output file connection
+%   }
+%   data <- try(read.csv(con, header = FALSE, nrows = nrows_block)) # Read next block
+% }
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlcom{#!/usr/bin/Rscript}
+
+ \hlcom{# Parse arguments}
+ \hlstd{args} \hlkwb{<-} \hlkwd{commandArgs}\hlstd{(}\hlnum{TRUE}\hlstd{)}
+ \hlkwd{stopifnot}\hlstd{(}\hlkwd{length}\hlstd{(args)} \hlopt{==} \hlnum{4}\hlstd{)}
+ \hlstd{data_filepath} \hlkwb{<-} \hlstd{args[}\hlnum{1}\hlstd{]}
+ \hlstd{var_stratify} \hlkwb{<-} \hlkwd{as.integer}\hlstd{(args[}\hlnum{2}\hlstd{])} \hlcom{# Column index to stratify on}
+ \hlstd{var_subset} \hlkwb{<-} \hlkwd{as.integer}\hlstd{(args[}\hlnum{3}\hlstd{])} \hlcom{# Column index to subset on}
+ \hlstd{value_subset} \hlkwb{<-} \hlkwd{as.character}\hlstd{(args[}\hlnum{4}\hlstd{])} \hlcom{# Value to subset on}
+
+ \hlstd{output_dir} \hlkwb{<-} \hlstr{"output"}
+ \hlkwd{dir.create}\hlstd{(output_dir,} \hlkwc{showWarnings} \hlstd{=} \hlnum{FALSE}\hlstd{)} \hlcom{# Set up output directory}
+ \hlstd{con} \hlkwb{<-} \hlkwd{bzfile}\hlstd{(data_filepath,} \hlstr{"rt"}\hlstd{)} \hlcom{# Open input file connection (for reading in text mode)}
+ \hlstd{nrows_block} \hlkwb{<-} \hlnum{50000} \hlcom{# Read from input file in blocks of size nrows_block}
+ \hlstd{header} \hlkwb{<-} \hlkwd{read.csv}\hlstd{(con,} \hlkwc{header} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{nrows} \hlstd{=} \hlnum{1}\hlstd{)}
+ \hlstd{data} \hlkwb{<-} \hlkwd{read.csv}\hlstd{(con,} \hlkwc{header} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{nrows} \hlstd{= nrows_block)} \hlcom{# Read in first block}
+ \hlcom{# Read and process blocks while there are still rows to be read and processed}
+ \hlkwa{while} \hlstd{(}\hlopt{!}\hlkwd{class}\hlstd{(data)} \hlopt{==} \hlstr{"try-error"}\hlstd{) \{}
+   \hlstd{data_subset} \hlkwb{<-} \hlstd{data[}\hlkwd{as.character}\hlstd{(data[, var_subset])} \hlopt{==} \hlstd{value_subset, ]} \hlcom{# Subset data}
+   \hlstd{data_strata_list} \hlkwb{<-} \hlkwd{split}\hlstd{(data_subset, data_subset[, var_stratify])} \hlcom{# Stratify data}
+   \hlkwa{for} \hlstd{(stratum} \hlkwa{in} \hlkwd{names}\hlstd{(data_strata_list)) \{} \hlcom{# Output data strata to respective bz2 files}
+     \hlstd{data_filepath_out} \hlkwb{<-} \hlkwd{file.path}\hlstd{(output_dir,} \hlkwd{paste0}\hlstd{(stratum,} \hlstr{".csv.bz2"}\hlstd{))}
+     \hlstd{con_out} \hlkwb{<-} \hlkwd{bzfile}\hlstd{(data_filepath_out,} \hlstr{"at"}\hlstd{)} \hlcom{# Open output file connection (for appending)}
+     \hlkwd{write.table}\hlstd{(data_strata_list[[stratum]],} \hlkwc{row.names} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{col.names} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{sep} \hlstd{=} \hlstr{","}\hlstd{,}
+                 \hlkwc{file} \hlstd{= con_out,} \hlkwc{append} \hlstd{=} \hlnum{TRUE}\hlstd{)} \hlcom{# Write to file connection}
+     \hlkwd{close}\hlstd{(con_out)} \hlcom{# Close output file connection}
+   \hlstd{\}}
+   \hlstd{data} \hlkwb{<-} \hlkwd{try}\hlstd{(}\hlkwd{read.csv}\hlstd{(con,} \hlkwc{header} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{nrows} \hlstd{= nrows_block))} \hlcom{# Read next block}
+ \hlstd{\}}
+ \hlkwd{closeAllConnections}\hlstd{()}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ chmod ugo+x subset-and-stratify.R
+ data_filepath="data/AirlineData2006-2008.csv.bz2"
+ var_stratify=1 # Year
+ var_subset=18 # Flight destination
+ value_subset="SFO"
+ ./subset-and-stratify.R $data_filepath $var_stratify $var_subset $value_subset
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%======================================================================
+\section{Problem 2}
+(a)
+\texttt{myFuns} is a list of 3 functions, each of which returns the value of \texttt{i}. Since \texttt{i} is not found in the function environment, \texttt{i} in the global environment is used. At the first evaluation, the value of \texttt{i} is 3 from the last run of the \texttt{for} loop. Hence, that value is returned and printed out thrice.
+
+(b)
+Again, \texttt{i} is being found in the global environment and its value is 1 at the first iteration of the \texttt{for} loop, 2 at the second iteration and so on.
+
+(c)
+\texttt{i} is now being found in the environment of the function \texttt{funGenerator} during both the third and fourth evaluations. The value of \texttt{i} is 3 at the end of the evaluation of the \texttt{for} loop.
+%======================================================================
+\section{Problem 3}
+Functions are called in the following order:
+\begin{enumerate}
+  \item \texttt{sapply} with frame number 1 and objects in the frame are \texttt{FUN}, \texttt{simplify}, \texttt{USE.NAMES}, \texttt{X}
+  \item \texttt{lapply} with frame number 2 and objects in the frame are \texttt{FUN}, \texttt{X}
+  \item \texttt{FUN} with frame number 3 and the only object in the frame is \texttt{x}
+\end{enumerate}
+\end{document}
