@@ -69,20 +69,6 @@
 \section{Problem 1}
 First open an input file connection to the \texttt{bz2} file using \texttt{bzfile}, then read in the first block of data with \texttt{read.csv}. Subset the data according to the given column index and subset value, then stratify the data with \texttt{split} and output stratified data to respective \texttt{bz2} files by opening output file connections using again \texttt{bzfile} and writing to the connections with \texttt{read.table}. Close output file connections, then read in the next block of data. While this reading step does not produce an error, repeat previous data processing steps.
 
-% # Read and process blocks while there are still rows to be read and processed
-% while (!class(data) == "try-error") {
-%   data_subset <- data[as.character(data[, var_subset]) == value_subset, ] # Subset data
-%   data_strata_list <- split(data_subset, data_subset[, var_stratify]) # Stratify data
-%   for (stratum in names(data_strata_list)) { # Output data strata to respective bz2 files
-%     data_filepath_out <- file.path(output_dir, paste0(stratum, ".csv.bz2"))
-%     con_out <- bzfile(data_filepath_out, "at") # Open output file connection (for appending)
-%     write.table(data_strata_list[[stratum]], row.names = FALSE, col.names = FALSE, sep = ",", 
-%                 file = con_out, append = TRUE) # Write to file connection
-%     close(con_out) # Close output file connection
-%   }
-%   data <- try(read.csv(con, header = FALSE, nrows = nrows_block)) # Read next block
-% }
-
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
 \begin{alltt}
