@@ -1,0 +1,7 @@
+# Jin Rou New, 2014
+
+I read Wilson et al.'s Best Practices for Scientific Computing.
+
+Questions/comments:
+1. I've had a number of failed attempts convincing other researchers to adhere to a number of the practices listed especially version control. What would be the most convincing argument for research teams with limited time and manpower?
+2. I don't quite understand the points about a workflow management tool (what would be an equivalent for our current purposes?) and oracles (still not clear to me what an oracle is).
