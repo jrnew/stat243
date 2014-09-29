@@ -1,0 +1,580 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+
+\title{STAT 243: Problem Set 3}
+\author{Jin Rou New}
+\date{\today}
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+
+I broke down the problem into the following steps:
+\begin{enumerate}
+
+\item Extract all speech URLs from the speech directory page with \texttt{GetSpeechURLs}.
+\item Download a speech given the URL, extract and format the speech text and other information such as president, year and number of laughter and applause tags with \texttt{GetSpeech}.
+\item Extract individual words from a speech with \texttt{ExtractWordsFromSpeech}.
+\item Extract individual sentences from a speech with \texttt{ExtractSentencesFromSpeech}.
+\item Get all relevant textual information about the speech with \texttt{GetSpeechData}. Information extracted includes:
+  \begin{itemize}
+  \item Number of words in speech.
+  \item Number of sentences in speech.
+  \item Average length of words in speech.
+  \item Average length of sentences in speech.
+  \item Average length of sentences in speech.
+  \item Count of word/phrase occurrences of given words/phrases, including the count of the number of figures/statistics used. This was done with two functions \texttt{CountWordOccurrences} and \texttt{CountPhraseOccurrences}
+  \item (and for extra credit):
+  \item Count of word/phrase occurrences of given words/phrases, normalised by the total number of words in the text.
+  \item Lexical diversity, which is the ratio of the number of unique words to the total number of words (a crude calculation because words should be stemmed before counting the number of unique words, but not done in this case).
+  \item Flesch-Kincaid readability score, a measured of the readability level of text, expressed as a U.S. grade level, i.e. The level of education generally required to understand the text (may be a number greater than 12th grade).
+  \item Flesch-Kincaid readability score, expressed as an age.
+  \item Word frequencies of all words in each speech sorted in order of decreasing word frequencies.
+  \end{itemize}
+\item Combine steps 2-5 in an overall function to download and process a speech into a list containing the speech text and information about it with \texttt{GetAndProcessSpeech}.
+\item Do step 6 for all speech URLs obtained from step 1 with \texttt{lapply} on \texttt{GetAndProcessSpeech}.
+\item Pull information about all speeches into a data frame for data analysis and visualization 
+with \texttt{GetSpeechDataFrame}
+\item Finally, make exploratory plots of the data and select interesting ones to present.
+\end{enumerate}
+
+In my main script, I download and process all speeches.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlkwd{library}\hlstd{(XML)}
+ \hlkwd{library}\hlstd{(stringr)}
+ \hlkwd{library}\hlstd{(koRpus)}
+ \hlkwd{library}\hlstd{(ggplot2)}
+ \hlkwd{source}\hlstd{(}\hlstr{"speech-functions.R"}\hlstd{)}
+ \hlstd{output_dir} \hlkwb{<-} \hlstr{"output"}
+ \hlcom{# Get list of speech objects}
+ \hlkwd{dir.create}\hlstd{(output_dir,} \hlkwc{showWarnings} \hlstd{=} \hlnum{FALSE}\hlstd{)}
+ \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{file.exists}\hlstd{(}\hlkwd{file.path}\hlstd{(output_dir,} \hlstr{"speech_list_all.rda"}\hlstd{))) \{}
+   \hlstd{urls_speech} \hlkwb{<-} \hlkwd{GetSpeechURLs}\hlstd{()}
+   \hlstd{speech_list_all} \hlkwb{<-} \hlkwd{lapply}\hlstd{(urls_speech, GetAndProcessSpeech)}
+   \hlkwd{names}\hlstd{(speech_list_all)} \hlkwb{<-} \hlkwd{sapply}\hlstd{(speech_list_all,} \hlkwa{function}\hlstd{(}\hlkwc{speech_list}\hlstd{)}
+     \hlkwd{paste}\hlstd{(speech_list}\hlopt{$}\hlstd{speech_data_scalar}\hlopt{$}\hlstd{president, speech_list}\hlopt{$}\hlstd{speech_data_scalar}\hlopt{$}\hlstd{year))}
+   \hlkwd{save}\hlstd{(speech_list_all,} \hlkwc{file} \hlstd{=} \hlkwd{file.path}\hlstd{(output_dir,} \hlstr{"speech_list_all.rda"}\hlstd{))}
+ \hlstd{\}} \hlkwa{else} \hlstd{\{}
+   \hlkwd{load}\hlstd{(}\hlkwd{file.path}\hlstd{(output_dir,} \hlstr{"speech_list_all.rda"}\hlstd{))}
+ \hlstd{\}}
+
+ \hlcom{# Get speech data frame}
+ \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{file.exists}\hlstd{(}\hlkwd{file.path}\hlstd{(output_dir,} \hlstr{"speech_df.rda"}\hlstd{))) \{}
+   \hlstd{speech_df} \hlkwb{<-} \hlkwd{GetSpeechDataFrame}\hlstd{(speech_list_all)}
+   \hlkwd{save}\hlstd{(speech_df,} \hlkwc{file} \hlstd{=} \hlkwd{file.path}\hlstd{(output_dir,} \hlstr{"speech_df.rda"}\hlstd{))}
+ \hlstd{\}} \hlkwa{else} \hlstd{\{}
+   \hlkwd{load}\hlstd{(}\hlkwd{file.path}\hlstd{(output_dir,} \hlstr{"speech_df.rda"}\hlstd{))}
+ \hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+Next, I make exploratory plots of the data.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlcom{# Make exploratory plots of variables over time}
+ \hlstd{vars_to_plot} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"num_words"}\hlstd{,} \hlstr{"avg_word_nchars"}\hlstd{,} \hlstr{"avg_sentence_nwords"}\hlstd{,}
+                   \hlstr{"lexical_diversity"}\hlstd{,} \hlstr{"readability_age"}\hlstd{,}
+                   \hlstr{"war"}\hlstd{,} \hlstr{"free"}\hlstd{,} \hlstr{"we"}\hlstd{,} \hlstr{"America"}\hlstd{)}
+ \hlstd{labels_to_plot} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"Word\textbackslash{}ncount"}\hlstd{,} \hlstr{"Average length\textbackslash{}nof words (# chars)"}\hlstd{,}
+                     \hlstr{"Average length of\textbackslash{}nsentences (# words)"}\hlstd{,}
+                     \hlstr{"Lexical diversity (#\textbackslash{}nunique words/# words)"}\hlstd{,}
+                     \hlstr{"Flesch-Kincaid\textbackslash{}nreadability score (Age)"}\hlstd{,}
+                     \hlstr{"war"}\hlstd{,} \hlstr{"free"}\hlstd{,} \hlstr{"we"}\hlstd{,} \hlstr{"America"}\hlstd{)}
+
+ \hlkwd{theme_set}\hlstd{(}\hlkwd{theme_bw}\hlstd{(}\hlkwc{base_size} \hlstd{=} \hlnum{9}\hlstd{)} \hlopt{+}
+             \hlkwd{theme}\hlstd{(}\hlkwc{axis.title.x} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlopt{-}\hlnum{0.3}\hlstd{),}
+                   \hlkwc{axis.title.y} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlnum{1.1}\hlstd{)))}
+ \hlstd{p} \hlkwb{<-} \hlkwd{list}\hlstd{()}
+ \hlkwa{for} \hlstd{(i} \hlkwa{in} \hlkwd{seq_along}\hlstd{(vars_to_plot)) \{}
+   \hlstd{p[[i]]} \hlkwb{<-} \hlkwd{ggplot}\hlstd{(speech_df,}
+                    \hlkwd{aes_string}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"year"}\hlstd{,} \hlkwc{y} \hlstd{= vars_to_plot[i],}
+                               \hlkwc{color} \hlstd{=} \hlstr{"president"}\hlstd{))} \hlopt{+}
+     \hlkwd{geom_point}\hlstd{()} \hlopt{+}
+     \hlkwd{xlab}\hlstd{(}\hlstr{"Year of address"}\hlstd{)} \hlopt{+} \hlkwd{ylab}\hlstd{(labels_to_plot[i])} \hlopt{+}
+     \hlkwd{scale_colour_hue}\hlstd{(}\hlkwc{guide} \hlstd{=} \hlnum{FALSE}\hlstd{)}
+ \hlstd{\}}
+ \hlcom{# Plots of text variables}
+ \hlkwd{do.call}\hlstd{(grid.arrange,}
+         \hlkwd{c}\hlstd{(p[}\hlnum{1}\hlopt{:}\hlnum{5}\hlstd{],} \hlkwd{list}\hlstd{(}\hlkwc{nrow} \hlstd{=} \hlnum{5}\hlstd{,} \hlkwc{ncol} \hlstd{=} \hlnum{1}\hlstd{,}
+                        \hlkwc{main} \hlstd{=} \hlkwd{textGrob}\hlstd{(}\hlstr{"Change in speech variables over time"}\hlstd{,}
+                                        \hlkwc{gp} \hlstd{=} \hlkwd{gpar}\hlstd{(}\hlkwc{font}\hlstd{=}\hlnum{2}\hlstd{)))))}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-make-plots1} 
+\begin{kframe}\begin{alltt}
+ \hlcom{# Plots of word occurences}
+ \hlkwd{do.call}\hlstd{(grid.arrange,}
+         \hlkwd{c}\hlstd{(p[}\hlnum{6}\hlopt{:}\hlnum{9}\hlstd{],} \hlkwd{list}\hlstd{(}\hlkwc{nrow} \hlstd{=} \hlnum{4}\hlstd{,} \hlkwc{ncol} \hlstd{=} \hlnum{1}\hlstd{,}
+                        \hlkwc{main} \hlstd{=} \hlkwd{textGrob}\hlstd{(}\hlstr{"Normalised # occurences of certain words"}\hlstd{,}
+                                        \hlkwc{gp} \hlstd{=} \hlkwd{gpar}\hlstd{(}\hlkwc{font}\hlstd{=}\hlnum{2}\hlstd{)))))}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-make-plots2} 
+
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlkwd{theme_set}\hlstd{(}\hlkwd{theme_bw}\hlstd{(}\hlkwc{base_size} \hlstd{=} \hlnum{10}\hlstd{)} \hlopt{+}
+             \hlkwd{theme}\hlstd{(}\hlkwc{axis.title.x} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlopt{-}\hlnum{0.3}\hlstd{),}
+                   \hlkwc{axis.title.y} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlnum{1.1}\hlstd{)))}
+ \hlcom{# Make boxplots comparing Republican and Democratic presidents}
+ \hlstd{comp_vars_to_plot} \hlkwb{<-} \hlstd{vars_to_plot[}\hlnum{1}\hlopt{:}\hlnum{5}\hlstd{]}
+ \hlstd{comp_labels_to_plot} \hlkwb{<-} \hlstd{labels_to_plot[}\hlnum{1}\hlopt{:}\hlnum{5}\hlstd{]}
+ \hlstd{boxplots} \hlkwb{<-} \hlkwd{vector}\hlstd{(}\hlstr{"list"}\hlstd{,} \hlkwd{length}\hlstd{(comp_vars_to_plot))}
+ \hlkwa{for} \hlstd{(i} \hlkwa{in} \hlkwd{seq_along}\hlstd{(comp_vars_to_plot)) \{}
+   \hlstd{boxplots[[i]]} \hlkwb{<-} \hlkwd{ggplot}\hlstd{(speech_df[}\hlopt{!}\hlkwd{is.na}\hlstd{(speech_df}\hlopt{$}\hlstd{party), ],}
+                           \hlkwd{aes_string}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"party"}\hlstd{,} \hlkwc{y} \hlstd{= comp_vars_to_plot[i]))} \hlopt{+}
+     \hlkwd{geom_boxplot}\hlstd{()} \hlopt{+}
+     \hlkwd{xlab}\hlstd{(}\hlstr{""}\hlstd{)} \hlopt{+}
+     \hlkwd{ylab}\hlstd{(comp_labels_to_plot[i])}
+ \hlstd{\}}
+ \hlkwd{do.call}\hlstd{(grid.arrange,}
+         \hlkwd{c}\hlstd{(boxplots,} \hlkwd{list}\hlstd{(}\hlkwc{nrow} \hlstd{=} \hlnum{2}\hlstd{,} \hlkwc{ncol} \hlstd{=} \hlnum{3}\hlstd{,}
+                        \hlkwc{main} \hlstd{=} \hlkwd{textGrob}\hlstd{(}\hlstr{"Comparison of Democrat vs Republican speeches"}\hlstd{,}
+                                        \hlkwc{gp} \hlstd{=} \hlkwd{gpar}\hlstd{(}\hlkwc{font}\hlstd{=}\hlnum{2}\hlstd{)))))}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-make-boxplots} 
+
+\end{knitrout}
+
+The functions called from the main script are given in the following pages.
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# speech-functions.R}
+
+\hlcom{#' Download speech, then process it and return data about it.}
+\hlcom{#' }
+\hlcom{#' Download speech from URL, format it in various forms, then get data about it, }
+\hlcom{#' including number of words/sentences, average word/sentence length, }
+\hlcom{#' number of word/phrase occurences of given words/phrases.}
+\hlcom{#' }
+\hlcom{#' @param words_to_count A character vector containing non-case-sensitive words to count.}
+\hlcom{#' @param words_to_count_cs A character vector containing case-sensitive words to count.}
+\hlcom{#' @param phrases_to_count A character vector containing non-case-sensitive phrases to count.}
+\hlcom{#' @param phrases_to_count_cs A character vector containing case-sensitive phrases to count.}
+\hlcom{#' @return A list object containing: }
+\hlcom{#' \textbackslash{}describe\{}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{text_formatted\}\}\{The full formatted speech text.\}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{text_words\}\}\{A character vector with words of the speech as individual elements.\}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{text_sentences\}\}\{A character vector with sentences of the speech as individual elements.\}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{speech_data_scalar\}\}\{Scalar data about the speech, which also include}
+\hlcom{#'   \textbackslash{}describe\{}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{president\}\}\{President who made the speech.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{year\}\}\{Year the speech was made.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{count_audience_response\}\}\{Numeric vector with number of times}
+\hlcom{#'      the audience laughed or applauded.\}}
+\hlcom{#'   \}\}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{speech_data_vector\}\}\{Vector data about the speech.\}}
+\hlcom{#' \}}
+\hlstd{GetAndProcessSpeech} \hlkwb{<-} \hlkwa{function}\hlstd{(}
+  \hlkwc{url_speech}\hlstd{,}
+  \hlkwc{words_to_count} \hlstd{=} \hlkwd{c}\hlstd{(}\hlstr{"we"}\hlstd{,} \hlstr{"you"}\hlstd{,} \hlstr{"they"}\hlstd{,} \hlstr{"free"}\hlstd{,} \hlstr{"war"}\hlstd{,} \hlstr{"god"}\hlstd{,}
+                     \hlstr{"republic[[:punct:] ]"}\hlstd{,} \hlstr{"[0-9]\{1,\}"}\hlstd{),}
+  \hlkwc{words_to_count_cs} \hlstd{=} \hlkwd{c}\hlstd{(}\hlstr{"I"}\hlstd{,} \hlstr{"America"}\hlstd{,} \hlstr{"Republican"}\hlstd{,} \hlstr{"Democrat"}\hlstd{,}
+                        \hlstr{"democra"}\hlstd{,} \hlstr{"Jesus|Christ|Christian"}\hlstd{),}
+  \hlkwc{phrases_to_count} \hlstd{=} \hlkwd{c}\hlstd{(}\hlstr{"god bless"}\hlstd{),}
+  \hlkwc{phrases_to_count_cs} \hlstd{=} \hlkwa{NULL}
+\hlstd{) \{}
+  \hlstd{speech_list} \hlkwb{<-} \hlkwd{GetSpeech}\hlstd{(url_speech)}
+
+  \hlcom{# Get plain speech text in the form of a character vector of words/sentences}
+  \hlstd{text_words} \hlkwb{<-} \hlkwd{ExtractWordsFromSpeech}\hlstd{(speech_list}\hlopt{$}\hlstd{text_formatted)}
+  \hlstd{text_sentences} \hlkwb{<-} \hlkwd{ExtractSentencesFromSpeech}\hlstd{(speech_list}\hlopt{$}\hlstd{text_formatted)}
+
+  \hlcom{# Get speech-related data}
+  \hlstd{speech_data_all} \hlkwb{<-} \hlkwd{GetSpeechData}\hlstd{(speech_list}\hlopt{$}\hlstd{text_formatted, text_words, text_sentences,}
+                                   \hlstd{words_to_count, words_to_count_cs,}
+                                   \hlstd{phrases_to_count, phrases_to_count_cs)}
+  \hlstd{speech_data_scalar} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlkwd{list}\hlstd{(}\hlkwc{president} \hlstd{= speech_list}\hlopt{$}\hlstd{president,}
+                               \hlkwc{year} \hlstd{= speech_list}\hlopt{$}\hlstd{year,}
+                               \hlkwc{num_laughter} \hlstd{= speech_list}\hlopt{$}\hlstd{count_audience_response[[}\hlstr{"num_laughter"}\hlstd{]],}
+                               \hlkwc{num_applause} \hlstd{= speech_list}\hlopt{$}\hlstd{count_audience_response[[}\hlstr{"num_applause"}\hlstd{]]),}
+                          \hlstd{speech_data_all}\hlopt{$}\hlstd{speech_data_scalar)}
+  \hlstd{speech_list_final} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{text_formatted} \hlstd{= speech_list}\hlopt{$}\hlstd{text_formatted,}
+                            \hlkwc{text_words} \hlstd{= text_words,}
+                            \hlkwc{text_sentences} \hlstd{= text_sentences,}
+                            \hlkwc{speech_data_scalar} \hlstd{= speech_data_scalar,}
+                            \hlkwc{speech_data_vector} \hlstd{= speech_data_all}\hlopt{$}\hlstd{speech_data_vector)}
+  \hlkwd{message}\hlstd{(}\hlkwd{paste0}\hlstd{(}\hlstr{"Processed speech by "}\hlstd{, speech_list_final}\hlopt{$}\hlstd{speech_data_scalar}\hlopt{$}\hlstd{president,}
+                 \hlstr{" in "}\hlstd{, speech_list_final}\hlopt{$}\hlstd{speech_data_scalar}\hlopt{$}\hlstd{year,} \hlstr{"."}\hlstd{))}
+  \hlkwd{return}\hlstd{(speech_list_final)}
+\hlstd{\}}
+
+\hlcom{#' Extract scalar speech data and output a data frame.}
+\hlcom{#' }
+\hlcom{#' Reads in a list of speech objects and extract scalar speech data into }
+\hlcom{#' a data frame for ease of analysis.}
+\hlcom{#' }
+\hlcom{#' @param speech_list_all A list of speech objects/lists.}
+\hlcom{#' @return A data frame containing scalar speech data.}
+\hlstd{GetSpeechDataFrame} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{speech_list_all}\hlstd{) \{}
+  \hlstd{vars} \hlkwb{<-} \hlkwd{names}\hlstd{(speech_list_all[[}\hlnum{1}\hlstd{]]}\hlopt{$}\hlstd{speech_data_scalar)}
+  \hlstd{speech_df_scalar} \hlkwb{<-} \hlkwd{vector}\hlstd{(}\hlstr{"list"}\hlstd{,} \hlkwc{length} \hlstd{=} \hlkwd{length}\hlstd{(vars))}
+  \hlkwa{for} \hlstd{(i} \hlkwa{in} \hlkwd{seq_along}\hlstd{(vars)) \{}
+    \hlstd{speech_df_scalar[[i]]} \hlkwb{<-} \hlkwd{sapply}\hlstd{(speech_list_all,}
+                             \hlkwa{function}\hlstd{(}\hlkwc{speech_list}\hlstd{,} \hlkwc{var}\hlstd{) speech_list}\hlopt{$}\hlstd{speech_data_scalar[[var]],}
+                             \hlkwc{var} \hlstd{= vars[i])}
+  \hlstd{\}}
+  \hlstd{vars_count} \hlkwb{<-} \hlkwd{names}\hlstd{(speech_list_all[[}\hlnum{1}\hlstd{]]}\hlopt{$}\hlstd{speech_data_vector}\hlopt{$}\hlstd{count_word_normalised)}
+  \hlstd{speech_df_count} \hlkwb{<-} \hlkwd{vector}\hlstd{(}\hlstr{"list"}\hlstd{,} \hlkwc{length} \hlstd{=} \hlkwd{length}\hlstd{(vars_count))}
+  \hlkwa{for} \hlstd{(i} \hlkwa{in} \hlkwd{seq_along}\hlstd{(vars_count)) \{}
+    \hlstd{speech_df_count[[i]]} \hlkwb{<-} \hlkwd{sapply}\hlstd{(speech_list_all,}
+                                   \hlkwa{function}\hlstd{(}\hlkwc{speech_list}\hlstd{,} \hlkwc{var}\hlstd{)}
+                                     \hlstd{speech_list}\hlopt{$}\hlstd{speech_data_vector}\hlopt{$}\hlstd{count_word_normalised[[var]],}
+                                   \hlkwc{var} \hlstd{= vars_count[i])}
+  \hlstd{\}}
+  \hlkwd{names}\hlstd{(speech_df_scalar)} \hlkwb{<-} \hlstd{vars}
+  \hlkwd{names}\hlstd{(speech_df_count)} \hlkwb{<-} \hlstd{vars_count}
+  \hlstd{speech_df} \hlkwb{<-} \hlkwd{as.data.frame}\hlstd{(}\hlkwd{c}\hlstd{(speech_df_scalar, speech_df_count))}
+  \hlcom{# Add in party of presidents after 1932, set as NA for those before 1932}
+  \hlstd{speech_df}\hlopt{$}\hlstd{party} \hlkwb{<-}
+    \hlkwd{ifelse}\hlstd{(speech_df}\hlopt{$}\hlstd{year} \hlopt{>} \hlnum{1932} \hlopt{&}
+             \hlkwd{str_detect}\hlstd{(speech_df}\hlopt{$}\hlstd{president,}
+                        \hlstr{"Eisenhower|Nixon|Ford|Reagan|Bush|Bush"}\hlstd{),}
+           \hlstr{"Republican"}\hlstd{,}
+           \hlkwd{ifelse}\hlstd{(speech_df}\hlopt{$}\hlstd{year} \hlopt{>} \hlnum{1932} \hlopt{&}
+                    \hlkwd{str_detect}\hlstd{(speech_df}\hlopt{$}\hlstd{president,}
+                               \hlstr{"Roosevelt|Truman|Kennedy|Johnson|Carter|Clinton|Obama"}\hlstd{),}
+                  \hlstr{"Democrat"}\hlstd{,} \hlnum{NA}\hlstd{))}
+  \hlkwd{print}\hlstd{(}\hlkwd{head}\hlstd{(speech_df))}
+  \hlkwd{return}\hlstd{(speech_df)}
+\hlstd{\}}
+
+\hlcom{#' Get speech from the speech URL.}
+\hlcom{#' }
+\hlcom{#' Reads in the URL of the page with a listing of all State of the Union }
+\hlcom{#' Address speeches and returns all URLs of the speeches.}
+\hlcom{#' }
+\hlcom{#' @param url_speech_dir A character scalar containing the URL linking to a}
+\hlcom{#' page with a listing of all State of the Union Address speeches.}
+\hlcom{#' @return A character vector containing URLs of all State of the Union }
+\hlcom{#' Address speeches.}
+\hlstd{GetSpeechURLs} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{url_speech_dir} \hlstd{=} \hlstr{"http://www.presidency.ucsb.edu/sou.php"}\hlstd{) \{}
+  \hlstd{xml_speech_dir} \hlkwb{<-} \hlkwd{htmlParse}\hlstd{(url_speech_dir,} \hlkwc{useInternalNodes} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+  \hlstd{urls_all} \hlkwb{<-} \hlkwd{xpathSApply}\hlstd{(xml_speech_dir,} \hlstr{"//a/@href"}\hlstd{)}
+  \hlstd{urls_speech} \hlkwb{<-} \hlkwd{unique}\hlstd{(urls_all[}\hlkwd{str_detect}\hlstd{(urls_all,} \hlstr{"pid"}\hlstd{)])}
+  \hlkwd{message}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"There are"}\hlstd{,} \hlkwd{length}\hlstd{(urls_speech),} \hlstr{"speeches on url_speech_dir."}\hlstd{))}
+  \hlkwd{return}\hlstd{(urls_speech)}
+\hlstd{\}}
+
+\hlcom{#' Get speech from the speech URL.}
+\hlcom{#' }
+\hlcom{#' Reads in an URL of a page with a State of the Union Address and returns}
+\hlcom{#' the speech text and president and year of the speech.}
+\hlcom{#' }
+\hlcom{#' @param url_speech A character scalar containing the URL linking to a}
+\hlcom{#' State of the Union Address speech.}
+\hlcom{#' @return A list object containing: }
+\hlcom{#' \textbackslash{}describe\{}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{text_formatted\}\}\{The full formatted speech text.\}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{president\}\}\{President who made the speech.\}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{year\}\}\{Year the speech was made.\}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{count_audience_response\}\}\{Numeric vector with number of times}
+\hlcom{#'   the audience laughed or applauded.\}}
+\hlcom{#' \}}
+\hlstd{GetSpeech} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{url_speech}\hlstd{) \{}
+  \hlstd{xml_speech} \hlkwb{<-} \hlkwd{htmlParse}\hlstd{(url_speech,} \hlkwc{useInternalNodes} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+
+  \hlcom{# Extract speech text, stripping all HTML tags and convert text encoding to UTF-8}
+  \hlstd{text_paragraphs_raw} \hlkwb{<-} \hlkwd{xpathSApply}\hlstd{(xml_speech,} \hlstr{"//span[@class='displaytext']/p"}\hlstd{, xmlValue)}
+  \hlstd{text_paragraphs} \hlkwb{<-} \hlkwd{sapply}\hlstd{(text_paragraphs_raw, iconv,} \hlkwc{to} \hlstd{=} \hlstr{"UTF-8"}\hlstd{)}
+  \hlkwd{names}\hlstd{(text_paragraphs)} \hlkwb{<-} \hlkwa{NULL}
+
+  \hlcom{# Get full formatted speech text with new paragraphs indicated by a new line}
+  \hlstd{text_formatted} \hlkwb{<-} \hlkwd{paste}\hlstd{(text_paragraphs,} \hlkwc{collapse} \hlstd{=} \hlstr{" \textbackslash{}n"}\hlstd{)}
+  \hlstd{text_formatted} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_formatted,} \hlstr{"  "}\hlstd{,} \hlstr{" "}\hlstd{)}
+
+  \hlcom{# Get number of occurences of "[Laughter]" and "[Applause]" }
+  \hlcom{# before removing them from speech text}
+  \hlstd{count_audience_response} \hlkwb{<-} \hlkwd{sapply}\hlstd{(}\hlkwd{c}\hlstd{(}\hlstr{"\textbackslash{}\textbackslash{}[Laughter\textbackslash{}\textbackslash{}]"}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}[Applause\textbackslash{}\textbackslash{}]"}\hlstd{),}
+                                    \hlstd{str_count,} \hlkwc{string} \hlstd{= text_formatted)}
+  \hlkwd{names}\hlstd{(count_audience_response)} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"num_laughter"}\hlstd{,} \hlstr{"num_applause"}\hlstd{)}
+  \hlstd{text_formatted} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_formatted,} \hlstr{" \textbackslash{}\textbackslash{}[Laughter\textbackslash{}\textbackslash{}]| \textbackslash{}\textbackslash{}[Applause\textbackslash{}\textbackslash{}]"}\hlstd{,} \hlstr{""}\hlstd{)}
+
+  \hlcom{# Extract president name and year of speech}
+  \hlstd{citation} \hlkwb{<-} \hlkwd{paste}\hlstd{(}\hlkwd{xpathSApply}\hlstd{(xml_speech,} \hlstr{"//span[@class='ver10']"}\hlstd{, xmlValue),} \hlkwc{collapse} \hlstd{=} \hlstr{""}\hlstd{)}
+  \hlstd{president} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(}\hlkwd{str_extract_all}\hlstd{(citation,} \hlkwd{perl}\hlstd{(}\hlstr{"Citation:[a-zA-Z\textbackslash{}\textbackslash{}.\textbackslash{}\textbackslash{}s]+:"}\hlstd{))[[}\hlnum{1}\hlstd{]],}
+                               \hlstr{"Citation:\textbackslash{}\textbackslash{}s|\textbackslash{}\textbackslash{}:"}\hlstd{,} \hlstr{""}\hlstd{)}
+  \hlstd{year} \hlkwb{<-} \hlkwd{as.integer}\hlstd{(}\hlkwd{str_extract}\hlstd{(citation,} \hlkwd{perl}\hlstd{(}\hlstr{"[[:digit:]]\{4\}"}\hlstd{)))}
+
+  \hlstd{speech_list} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{text_formatted} \hlstd{= text_formatted,}
+                      \hlkwc{president} \hlstd{= president,}
+                      \hlkwc{year} \hlstd{= year,}
+                      \hlkwc{count_audience_response} \hlstd{= count_audience_response)}
+  \hlkwd{return}\hlstd{(speech_list)}
+\hlstd{\}}
+
+\hlcom{#' Extract individual words from speech.}
+\hlcom{#' }
+\hlcom{#' Reads in the full formatted speech text and returns it as individual words.}
+\hlcom{#' }
+\hlcom{#' @param text_formatted A character scalar containing the full formatted speech text}
+\hlcom{#' from \textbackslash{}code\{\textbackslash{}link\{GetSpeech\}\}.}
+\hlcom{#' @return A character vector with words of the speech as individual elements.}
+\hlstd{ExtractWordsFromSpeech} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{text_formatted}\hlstd{) \{}
+  \hlcom{# Convert all commas and periods sandwiched by digits and periods following initlals}
+  \hlcom{# into &&&, ###, ~~~}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_formatted,} \hlstr{"([0-9]+)\textbackslash{}\textbackslash{}.([0-9]+)"}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}1&&&\textbackslash{}\textbackslash{}2"}\hlstd{)}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,} \hlstr{"([0-9]+),([0-9]\{3\})"}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}1###\textbackslash{}\textbackslash{}2"}\hlstd{)}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,} \hlstr{"([A-Z])\textbackslash{}\textbackslash{}."}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}1~~~"}\hlstd{)}
+
+  \hlcom{# Remove all punctuation marks that separate words}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,}
+                                \hlstr{"\textbackslash{}\textbackslash{}.|,|\textbackslash{}\textbackslash{}?|!|:|;|\textbackslash{}"|\textbackslash{}n|—|--|\textbackslash{}\textbackslash{}[|\textbackslash{}\textbackslash{}]|\textbackslash{}\textbackslash{}(|\textbackslash{}\textbackslash{})"}\hlstd{,} \hlstr{""}\hlstd{)}
+
+  \hlcom{# Replace &&& and ### back by periods and commas respectively}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,} \hlstr{"&&&"}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}."}\hlstd{)}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,} \hlstr{"###"}\hlstd{,} \hlstr{","}\hlstd{)}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,} \hlstr{"~~~"}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}."}\hlstd{)}
+  \hlstd{text_words} \hlkwb{<-} \hlkwd{strsplit}\hlstd{(text_plain,} \hlkwc{split} \hlstd{=} \hlstr{" "}\hlstd{)[[}\hlnum{1}\hlstd{]]}
+
+  \hlkwd{return}\hlstd{(text_words)}
+\hlstd{\}}
+
+\hlcom{#' Extract individual sentences from speech.}
+\hlcom{#' }
+\hlcom{#' Reads in the full formatted speech text and returns it as individual sentences.}
+\hlcom{#' }
+\hlcom{#' @param text_formatted A character scalar containing the full formatted speech text }
+\hlcom{#' from \textbackslash{}code\{\textbackslash{}link\{GetSpeech\}\}.}
+\hlcom{#' @return A character vector with sentences of the speech as individual elements.}
+\hlstd{ExtractSentencesFromSpeech} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{text_formatted}\hlstd{) \{}
+  \hlcom{# Remove \textbackslash{}n and quotation marks}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_formatted,}
+                                \hlstr{"\textbackslash{}n|\textbackslash{}""}\hlstd{,} \hlstr{""}\hlstd{)}
+  \hlcom{# Remove period after honorifics to avoid splitting on them}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,}
+                                \hlstr{"(Mr|Mrs|Ms|Mdm|Dr|Lt|Hon|Jr)\textbackslash{}\textbackslash{}."}\hlstd{,}
+                                \hlstr{"\textbackslash{}\textbackslash{}1"}\hlstd{)}
+  \hlcom{# Substitute period after initials to avoid splitting on them}
+  \hlstd{text_plain} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,} \hlstr{"([A-Z])\textbackslash{}\textbackslash{}."}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}1~~~"}\hlstd{)}
+
+  \hlcom{# Prepend an extra period/question mark/exclamation mark to each of these punctuation marks}
+  \hlcom{# then split into individual sentences}
+  \hlstd{text_temp} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_plain,} \hlstr{"\textbackslash{}\textbackslash{}. "}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}.\textbackslash{}\textbackslash{}. "}\hlstd{)}
+  \hlstd{text_temp} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_temp,} \hlstr{"\textbackslash{}\textbackslash{}? "}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}?\textbackslash{}\textbackslash{}? "}\hlstd{)}
+  \hlstd{text_temp} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_temp,} \hlstr{"! "}\hlstd{,} \hlstr{"!! "}\hlstd{)}
+  \hlstd{text_sentences} \hlkwb{<-} \hlkwd{strsplit}\hlstd{(text_temp,} \hlkwc{split} \hlstd{=} \hlstr{"\textbackslash{}\textbackslash{}. |\textbackslash{}\textbackslash{}? |! "}\hlstd{)[[}\hlnum{1}\hlstd{]]}
+
+  \hlcom{# Put back period after initials}
+  \hlstd{text_sentences} \hlkwb{<-} \hlkwd{str_replace_all}\hlstd{(text_sentences,} \hlstr{"~~~"}\hlstd{,} \hlstr{"\textbackslash{}\textbackslash{}."}\hlstd{)}
+  \hlkwd{return}\hlstd{(text_sentences)}
+\hlstd{\}}
+
+\hlcom{#' Get data about a speech.}
+\hlcom{#' }
+\hlcom{#' Get data about a speech, including number of words/sentences, }
+\hlcom{#' average word/sentence length, number of word occurences of given words.}
+\hlcom{#' }
+\hlcom{#' @param text_formatted A character scalar containing the full formatted speech text}
+\hlcom{#' from \textbackslash{}code\{\textbackslash{}link\{GetSpeech\}\}.}
+\hlcom{#' @param text_words A character vector with sentences of the speech as individual elements}
+\hlcom{#' from \textbackslash{}code\{\textbackslash{}link\{ExtractSentencesFromSpeech\}\}.}
+\hlcom{#' @param text_sentences A character vector with sentences of the speech as individual elements}
+\hlcom{#' from \textbackslash{}code\{\textbackslash{}link\{ExtractWordsFromSpeech\}\}.}
+\hlcom{#' @param words_to_count A character vector containing non-case-sensitive words to count.}
+\hlcom{#' @param words_to_count_cs A character vector containing case-sensitive words to count.}
+\hlcom{#' @param phrases_to_count A character vector containing non-case-sensitive phrases to count.}
+\hlcom{#' @param phrases_to_count_cs A character vector containing case-sensitive phrases to count.}
+\hlcom{#' @return A list containing:}
+\hlcom{#' \textbackslash{}describe\{}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{speech_data_scalar\}\}\{A list containing:}
+\hlcom{#'     \textbackslash{}describe\{}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{num_words\}\}\{Numeric scalar. Number of words in speech.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{num_sentences\}\}\{Numeric scalar. Number of sentences in speech.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{avg_word_nchars\}\}\{Numeric scalar. Average length of words in speech.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{avg_sentence_nwords\}\}\{Numeric scalar. Average length of sentences in speech.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{num_unique_words\}\}\{Numeric scalar. Average length of sentences in speech.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{lexical_diversity\}\}\{Numeric scalar. Lexical diversity, }
+\hlcom{#'      which is the ratio of the number of unique words to the total number of words.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{readability_grade\}\}\{Numeric scalar. Flesch-Kincaid readability score }
+\hlcom{#'      expressed as a U.S. grade level.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{readability_age\}\}\{Numeric scalar. Flesch-Kincaid readability score }
+\hlcom{#'      expressed as an age.\}}
+\hlcom{#'     \}}
+\hlcom{#'   \}}
+\hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{speech_data_vector\}\}\{A list containing:}
+\hlcom{#'     \textbackslash{}describe\{}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{word_frequencies\}\}\{Named numeric vector of word frequencies}
+\hlcom{#'      sorted in order of decreasing word frequencies.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{count_word\}\}\{A numeric vector with the count of word/phrase }
+\hlcom{#'      occurrences of given words/phrases.\}}
+\hlcom{#'      \textbackslash{}item\{\textbackslash{}code\{count_word_normalised\}\}\{A numeric vector with the normalised}
+\hlcom{#'      count of word/phrase occurrences of given words/phrases.\}}
+\hlcom{#'     \}}
+\hlcom{#'   \}}
+\hlcom{#' \}}
+\hlstd{GetSpeechData} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{text_formatted}\hlstd{,} \hlkwc{text_words}\hlstd{,} \hlkwc{text_sentences}\hlstd{,}
+                          \hlkwc{words_to_count}\hlstd{,} \hlkwc{words_to_count_cs}\hlstd{,}
+                          \hlkwc{phrases_to_count}\hlstd{,} \hlkwc{phrases_to_count_cs}\hlstd{) \{}
+  \hlcom{# Get count of words and sentences in speech text}
+  \hlstd{num_words} \hlkwb{<-} \hlkwd{length}\hlstd{(text_words)}
+  \hlstd{num_sentences} \hlkwb{<-} \hlkwd{length}\hlstd{(text_sentences)}
+
+  \hlcom{# Get average word and sentence lengths}
+  \hlstd{avg_word_nchars} \hlkwb{<-} \hlkwd{mean}\hlstd{(}\hlkwd{nchar}\hlstd{(text_words))}
+  \hlstd{text_sentences_words} \hlkwb{<-} \hlkwd{strsplit}\hlstd{(text_sentences,} \hlstr{" "}\hlstd{)}
+  \hlstd{avg_sentence_nwords} \hlkwb{<-} \hlkwd{mean}\hlstd{(}\hlkwd{sapply}\hlstd{(text_sentences_words, length))}
+
+  \hlcom{# Get lexical diversity}
+  \hlstd{num_unique_words} \hlkwb{<-} \hlkwd{length}\hlstd{(}\hlkwd{unique}\hlstd{(}\hlkwd{tolower}\hlstd{(text_words)))}
+  \hlstd{lexical_diversity} \hlkwb{<-} \hlstd{num_unique_words}\hlopt{/}\hlstd{num_words}
+
+  \hlcom{# Get readability score}
+  \hlstd{tokens} \hlkwb{<-} \hlkwd{tokenize}\hlstd{(text_formatted,} \hlkwc{format} \hlstd{=} \hlstr{"obj"}\hlstd{,} \hlkwc{lang} \hlstd{=} \hlstr{"en"}\hlstd{)}
+  \hlstd{readability} \hlkwb{<-} \hlkwd{flesch.kincaid}\hlstd{(tokens)}
+  \hlstd{readability_grade} \hlkwb{<-} \hlkwd{as.numeric}\hlstd{(}\hlkwd{summary}\hlstd{(readability)}\hlopt{$}\hlstd{grade)}
+  \hlstd{readability_age} \hlkwb{<-} \hlkwd{as.numeric}\hlstd{(}\hlkwd{summary}\hlstd{(readability)}\hlopt{$}\hlstd{age)}
+
+  \hlcom{# Get word count of each word in decreasing order of frequency}
+  \hlstd{word_frequencies} \hlkwb{<-} \hlkwd{sort}\hlstd{(}\hlkwd{table}\hlstd{(}\hlkwd{tolower}\hlstd{(text_words)),} \hlkwc{decreasing} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+
+  \hlcom{# Get number of word/phrase occurences}
+  \hlstd{count_word} \hlkwb{<-} \hlkwa{NULL}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{is.null}\hlstd{(phrases_to_count))}
+    \hlstd{count_word} \hlkwb{<-} \hlkwd{c}\hlstd{(count_word,} \hlkwd{CountPhraseOccurrences}\hlstd{(text_formatted, phrases_to_count,}
+                                                       \hlkwc{ignore_case} \hlstd{=} \hlnum{TRUE}\hlstd{,} \hlkwc{perl} \hlstd{=} \hlnum{TRUE}\hlstd{))}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{is.null}\hlstd{(phrases_to_count_cs))}
+    \hlstd{count_word} \hlkwb{<-} \hlkwd{c}\hlstd{(count_word,} \hlkwd{CountPhraseOccurrences}\hlstd{(text_formatted, phrases_to_count_cs,}
+                                                       \hlkwc{ignore_case} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{perl} \hlstd{=} \hlnum{TRUE}\hlstd{))}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{is.null}\hlstd{(words_to_count))}
+    \hlstd{count_word} \hlkwb{<-} \hlkwd{c}\hlstd{(count_word,} \hlkwd{CountWordOccurrences}\hlstd{(text_words, words_to_count,}
+                                                     \hlkwc{ignore.case} \hlstd{=} \hlnum{TRUE}\hlstd{,} \hlkwc{perl} \hlstd{=} \hlnum{TRUE}\hlstd{))}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{is.null}\hlstd{(words_to_count_cs))}
+    \hlstd{count_word} \hlkwb{<-} \hlkwd{c}\hlstd{(count_word,} \hlkwd{CountWordOccurrences}\hlstd{(text_words, words_to_count_cs,}
+                                                     \hlkwc{ignore.case} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{perl} \hlstd{=} \hlnum{TRUE}\hlstd{))}
+  \hlcom{# Exclude count of "god bless" from count of "god"}
+  \hlstd{count_word[[}\hlstr{"god"}\hlstd{]]} \hlkwb{<-} \hlstd{count_word[[}\hlstr{"god"}\hlstd{]]} \hlopt{-} \hlstd{count_word[[}\hlstr{"god bless"}\hlstd{]]}
+  \hlcom{# Normalise word count}
+  \hlstd{count_word_normalised} \hlkwb{<-} \hlstd{count_word}\hlopt{/}\hlstd{num_words}
+
+  \hlstd{speech_data_scalar} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{num_words} \hlstd{= num_words,}
+                             \hlkwc{num_sentences} \hlstd{= num_sentences,}
+                             \hlkwc{avg_word_nchars} \hlstd{= avg_word_nchars,}
+                             \hlkwc{avg_sentence_nwords} \hlstd{= avg_sentence_nwords,}
+                             \hlkwc{num_unique_words} \hlstd{= num_unique_words,}
+                             \hlkwc{lexical_diversity} \hlstd{= lexical_diversity,}
+                             \hlkwc{readability_grade} \hlstd{= readability_grade,}
+                             \hlkwc{readability_age} \hlstd{= readability_age)}
+  \hlstd{speech_data_vector} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{word_frequencies} \hlstd{= word_frequencies,}
+                             \hlkwc{count_word} \hlstd{= count_word,}
+                             \hlkwc{count_word_normalised} \hlstd{= count_word_normalised)}
+  \hlkwd{return}\hlstd{(}\hlkwd{list}\hlstd{(}\hlkwc{speech_data_scalar} \hlstd{= speech_data_scalar,}
+              \hlkwc{speech_data_vector} \hlstd{= speech_data_vector))}
+\hlstd{\}}
+
+\hlcom{#' Count word occurences of multiple words.}
+\hlcom{#' }
+\hlcom{#' Count the number of times each word provided in a character vector }
+\hlcom{#' occurs in a given text.}
+\hlcom{#' }
+\hlcom{#' @param text_words A character vector with words of the speech as individual elements }
+\hlcom{#' from \textbackslash{}code\{\textbackslash{}link\{ExtractWordsFromSpeech\}\}.}
+\hlcom{#' @param words_to_count A character vector containing words to count.}
+\hlcom{#' @param ... Other arguments for \textbackslash{}code\{grepl\}}
+\hlcom{#' @return A numeric vector with counts of each word.}
+\hlstd{CountWordOccurrences} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{text_words}\hlstd{,} \hlkwc{words_to_count}\hlstd{,} \hlkwc{...}\hlstd{) \{}
+  \hlstd{count_words} \hlkwb{<-} \hlkwd{sapply}\hlstd{(words_to_count,} \hlkwa{function}\hlstd{(}\hlkwc{string}\hlstd{,} \hlkwc{pattern}\hlstd{,} \hlkwc{...}\hlstd{) \{}
+    \hlkwd{sum}\hlstd{(}\hlkwd{grepl}\hlstd{(pattern, string, ...))}
+  \hlstd{\},} \hlkwc{string} \hlstd{= text_words, ...)}
+  \hlkwd{return}\hlstd{(count_words)}
+\hlstd{\}}
+
+\hlcom{#' Count phrase occurences of multiple phrases.}
+\hlcom{#' }
+\hlcom{#' Count the number of times each phrase provided in a character vector }
+\hlcom{#' occurs in a given text.}
+\hlcom{#' }
+\hlcom{#' @param text A character scalar containing speech text.}
+\hlcom{#' @param phrases_to_count A character vector containing words to count.}
+\hlcom{#' @param ignore_case A logical scalar. Ignore case of matches?}
+\hlcom{#' @param perl A logical scalar. Use Perl-like regular expressions?}
+\hlcom{#' @return A numeric vector with counts of each phrase.}
+\hlstd{CountPhraseOccurrences} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{text}\hlstd{,} \hlkwc{phrases_to_count}\hlstd{,} \hlkwc{ignore_case}\hlstd{,} \hlkwc{perl} \hlstd{=} \hlnum{TRUE}\hlstd{) \{}
+  \hlstd{count_phrases} \hlkwb{<-} \hlkwd{sapply}\hlstd{(phrases_to_count,} \hlkwa{function}\hlstd{(}\hlkwc{string}\hlstd{,} \hlkwc{pattern}\hlstd{,} \hlkwc{ignore_case}\hlstd{,} \hlkwc{perl}\hlstd{) \{}
+    \hlkwa{if} \hlstd{(ignore_case} \hlopt{&} \hlstd{perl) \{}
+      \hlstd{count_phrases} \hlkwb{<-} \hlkwd{str_count}\hlstd{(string,} \hlkwd{ignore.case}\hlstd{(}\hlkwd{perl}\hlstd{(pattern)))}
+    \hlstd{\}} \hlkwa{else if} \hlstd{(ignore_case) \{}
+      \hlstd{count_phrases} \hlkwb{<-} \hlkwd{str_count}\hlstd{(string,} \hlkwd{ignore_case}\hlstd{(pattern))}
+    \hlstd{\}} \hlkwa{else if} \hlstd{(perl) \{}
+      \hlstd{count_phrases} \hlkwb{<-} \hlkwd{str_count}\hlstd{(string,} \hlkwd{perl}\hlstd{(pattern))}
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+      \hlstd{count_phrases} \hlkwb{<-} \hlkwd{str_count}\hlstd{(string, pattern)}
+    \hlstd{\}}
+  \hlstd{\},} \hlkwc{string} \hlstd{= text,} \hlkwc{ignore_case} \hlstd{= ignore_case,} \hlkwc{perl} \hlstd{= perl)}
+  \hlkwd{return}\hlstd{(count_phrases)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\end{document}

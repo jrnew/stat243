@@ -1,0 +1,147 @@
+\documentclass{article}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+
+\title{STAT 243: Problem Set 3}
+\author{Jin Rou New}
+\date{\today}
+
+%% begin.rcode setup, include=FALSE
+% opts_chunk$set(fig.path='figure/latex-', cache.path='cache/latex-')
+%% end.rcode
+
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+
+I broke down the problem into the following steps:
+\begin{enumerate}
+
+\item Extract all speech URLs from the speech directory page with \texttt{GetSpeechURLs}.
+\item Download a speech given the URL, extract and format the speech text and other information such as president, year and number of laughter and applause tags with \texttt{GetSpeech}.
+\item Extract individual words from a speech with \texttt{ExtractWordsFromSpeech}.
+\item Extract individual sentences from a speech with \texttt{ExtractSentencesFromSpeech}.
+\item Get all relevant textual information about the speech with \texttt{GetSpeechData}. Information extracted includes:
+  \begin{itemize}
+  \item Number of words in speech.
+  \item Number of sentences in speech.
+  \item Average length of words in speech.
+  \item Average length of sentences in speech.
+  \item Average length of sentences in speech.
+  \item Count of word/phrase occurrences of given words/phrases, including the count of the number of figures/statistics used. This was done with two functions \texttt{CountWordOccurrences} and \texttt{CountPhraseOccurrences}
+  \item (and for extra credit):
+  \item Count of word/phrase occurrences of given words/phrases, normalised by the total number of words in the text.
+  \item Lexical diversity, which is the ratio of the number of unique words to the total number of words (a crude calculation because words should be stemmed before counting the number of unique words, but not done in this case).
+  \item Flesch-Kincaid readability score, a measured of the readability level of text, expressed as a U.S. grade level, i.e. The level of education generally required to understand the text (may be a number greater than 12th grade).
+  \item Flesch-Kincaid readability score, expressed as an age.
+  \item Word frequencies of all words in each speech sorted in order of decreasing word frequencies.
+  \end{itemize}
+\item Combine steps 2-5 in an overall function to download and process a speech into a list containing the speech text and information about it with \texttt{GetAndProcessSpeech}.
+\item Do step 6 for all speech URLs obtained from step 1 with \texttt{lapply} on \texttt{GetAndProcessSpeech}.
+\item Pull information about all speeches into a data frame for data analysis and visualization 
+with \texttt{GetSpeechDataFrame}
+\item Finally, make exploratory plots of the data and select interesting ones to present.
+\end{enumerate}
+
+In my main script, I download and process all speeches.
+%% begin.rcode get-speech-list, cache=TRUE
+% library(XML)
+% library(stringr)
+% library(koRpus)
+% library(ggplot2)
+% source("speech-functions.R")
+% output_dir <- "output"
+% # Get list of speech objects
+% dir.create(output_dir, showWarnings = FALSE)
+% if (!file.exists(file.path(output_dir, "speech_list_all.rda"))) {
+%   urls_speech <- GetSpeechURLs()
+%   speech_list_all <- lapply(urls_speech, GetAndProcessSpeech)
+%   names(speech_list_all) <- sapply(speech_list_all, function(speech_list) 
+%     paste(speech_list$speech_data_scalar$president, speech_list$speech_data_scalar$year))
+%   save(speech_list_all, file = file.path(output_dir, "speech_list_all.rda"))
+% } else {
+%   load(file.path(output_dir, "speech_list_all.rda"))
+% }
+%
+% # Get speech data frame
+% if (!file.exists(file.path(output_dir, "speech_df.rda"))) {
+%   speech_df <- GetSpeechDataFrame(speech_list_all)
+%   save(speech_df, file = file.path(output_dir, "speech_df.rda"))
+% } else {
+%   load(file.path(output_dir, "speech_df.rda"))
+% }
+%% end.rcode
+
+Next, I make exploratory plots of the data.
+%% begin.rcode make-plots, cache=TRUE
+% # Make exploratory plots of variables over time
+% vars_to_plot <- c("num_words", "avg_word_nchars", "avg_sentence_nwords", 
+%                   "lexical_diversity", "readability_age",
+%                   "war", "free", "we", "America")
+% labels_to_plot <- c("Word\ncount", "Average length\nof words (# chars)", 
+%                     "Average length of\nsentences (# words)", 
+%                     "Lexical diversity (#\nunique words/# words)", 
+%                     "Flesch-Kincaid\nreadability score (Age)",
+%                     "war", "free", "we", "America")
+% 
+% theme_set(theme_bw(base_size = 9) + 
+%             theme(axis.title.x = element_text(vjust = -0.3),
+%                   axis.title.y = element_text(vjust = 1.1)))
+% p <- list()
+% for (i in seq_along(vars_to_plot)) {
+%   p[[i]] <- ggplot(speech_df, 
+%                    aes_string(x = "year", y = vars_to_plot[i], 
+%                               color = "president")) +
+%     geom_point() + 
+%     xlab("Year of address") + ylab(labels_to_plot[i]) + 
+%     scale_colour_hue(guide = FALSE)
+% }
+% # Plots of text variables
+% do.call(grid.arrange, 
+%         c(p[1:5], list(nrow = 5, ncol = 1,
+%                        main = textGrob("Change in speech variables over time",
+%                                        gp = gpar(font=2)))))
+% # Plots of word occurences
+% do.call(grid.arrange, 
+%         c(p[6:9], list(nrow = 4, ncol = 1, 
+%                        main = textGrob("Normalised # occurences of certain words",
+%                                        gp = gpar(font=2)))))
+%% end.rcode
+
+%% begin.rcode make-boxplots, cache=TRUE
+% theme_set(theme_bw(base_size = 10) + 
+%             theme(axis.title.x = element_text(vjust = -0.3),
+%                   axis.title.y = element_text(vjust = 1.1)))
+% # Make boxplots comparing Republican and Democratic presidents
+% comp_vars_to_plot <- vars_to_plot[1:5]
+% comp_labels_to_plot <- labels_to_plot[1:5]
+% boxplots <- vector("list", length(comp_vars_to_plot))
+% for (i in seq_along(comp_vars_to_plot)) {
+%   boxplots[[i]] <- ggplot(speech_df[!is.na(speech_df$party), ], 
+%                           aes_string(x = "party", y = comp_vars_to_plot[i])) +
+%     geom_boxplot() + 
+%     xlab("") + 
+%     ylab(comp_labels_to_plot[i])
+% }
+% do.call(grid.arrange, 
+%         c(boxplots, list(nrow = 2, ncol = 3, 
+%                        main = textGrob("Comparison of Democrat vs Republican speeches",
+%                                        gp = gpar(font=2)))))
+%% end.rcode
+
+The functions called from the main script are given in the following pages.
+%% begin.rcode read-chunk, echo=FALSE
+% library(knitr)
+% read_chunk("speech-functions.R") 
+%% end.rcode
+
+%% begin.rcode speechfunctions, eval=FALSE, cache=FALSE
+%% end.rcode
+
+\end{document}
