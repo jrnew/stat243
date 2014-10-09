@@ -20,7 +20,7 @@
 
 \section{Problem 1}
 
-I broke down the problem into the following steps:
+I broke down the problem into the following steps (code of functions are given in Appendix):
 \begin{enumerate}
 
 \item Extract all speech URLs from the speech directory page with \texttt{GetSpeechURLs}.
@@ -135,6 +135,7 @@ Next, I make exploratory plots of the data.
 %                                        gp = gpar(font=2)))))
 %% end.rcode
 
+\section{Appendix}
 The functions called from the main script are given in the following pages.
 %% begin.rcode read-chunk, echo=FALSE
 % library(knitr)
