@@ -1,0 +1,664 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+
+\title{STAT 243: Problem Set 4}
+\author{Jin Rou New}
+\date{\today}
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+The value of \texttt{x} is 2 and that of \texttt{y} is 1. This is due to lazy evaluation, where \texttt{y = 0} is not evaluated until it is needed, and here it is not needed since \texttt{x} is first evaluated, during which \texttt{y} is assigned a value of 1.
+
+When the function is modified such that we have \texttt{y + x} instead of \texttt{x + y} in the body of the function, the value of \texttt{y} is 0 (since \texttt{y = 0} is evaluated first) and the value of \texttt{x} is again 2.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlstd{f1} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x} \hlstd{= \{}
+   \hlstd{y} \hlkwb{<-} \hlnum{1}
+   \hlnum{2}
+ \hlstd{\},} \hlkwc{y} \hlstd{=} \hlnum{0}\hlstd{) \{}
+ \hlstd{x} \hlopt{+} \hlstd{y}
+ \hlstd{\}}
+ \hlkwd{f1}\hlstd{()}
+\end{alltt}
+\begin{verbatim}
+## [1] 3
+\end{verbatim}
+\begin{alltt}
+ \hlstd{f2} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x} \hlstd{= \{}
+   \hlstd{y} \hlkwb{<-} \hlnum{1}
+   \hlnum{2}
+ \hlstd{\},} \hlkwc{y} \hlstd{=} \hlnum{0}\hlstd{) \{}
+   \hlstd{y} \hlopt{+} \hlstd{x}
+ \hlstd{\}}
+ \hlkwd{f2}\hlstd{()}
+\end{alltt}
+\begin{verbatim}
+## [1] 2
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\section{Problem 2}
+It is more efficient to subset a vector based on a vector of indices rather than booleans. When subsetting by a vector of indices, it is immediately clear which elements need to be extracted. On the other hand, when subsetting by a vector of booleans, it is first necessary to determine the indices of the vector for which elements need to be extracted, which is an additional step. \\
+The timing when subsetting by indices changes little when the length of the vector increases, while the timing when subsetting by booleans increases with order n.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlstd{CompareTime} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{length_vector}\hlstd{,} \hlkwc{num_select}\hlstd{) \{}
+   \hlstd{test_vector} \hlkwb{<-} \hlnum{1}\hlopt{:}\hlstd{length_vector}
+   \hlstd{indices_vector} \hlkwb{<-} \hlnum{1}\hlopt{:}\hlstd{num_select}
+   \hlstd{boolean_vector} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlkwd{rep}\hlstd{(}\hlnum{TRUE}\hlstd{, num_select),} \hlkwd{rep}\hlstd{(}\hlnum{FALSE}\hlstd{, length_vector}\hlopt{-}\hlstd{num_select))}
+   \hlstd{time_indices} \hlkwb{<-} \hlkwd{system.time}\hlstd{(test_vector[indices_vector])[}\hlstr{"elapsed"}\hlstd{]}
+   \hlstd{time_boolean} \hlkwb{<-} \hlkwd{system.time}\hlstd{(test_vector[boolean_vector])[}\hlstr{"elapsed"}\hlstd{]}
+   \hlkwd{return}\hlstd{(}\hlkwd{c}\hlstd{(}\hlkwc{time_indices} \hlstd{= time_indices,} \hlkwc{time_boolean} \hlstd{= time_boolean))}
+ \hlstd{\}}
+ \hlkwd{library}\hlstd{(ggplot2)}
+ \hlcom{# Examine how length of vector to subset affects timing}
+ \hlstd{lengths} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{,} \hlnum{9}\hlstd{)}\hlopt{*}\hlnum{10000000}\hlstd{,} \hlnum{100000000}\hlstd{)}
+ \hlstd{times_list} \hlkwb{<-} \hlkwd{lapply}\hlstd{(lengths, CompareTime,} \hlkwc{num_select} \hlstd{=} \hlnum{5000000}\hlstd{)}
+ \hlkwd{theme_set}\hlstd{(}\hlkwd{theme_bw}\hlstd{(}\hlkwc{base_size} \hlstd{=} \hlnum{8}\hlstd{)} \hlopt{+}
+             \hlkwd{theme}\hlstd{(}\hlkwc{plot.title} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlnum{1}\hlstd{),}
+                   \hlkwc{axis.title.x} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlopt{-}\hlnum{0.3}\hlstd{),}
+                   \hlkwc{axis.title.y} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlnum{1.1}\hlstd{)))}
+ \hlstd{p} \hlkwb{<-} \hlkwd{ggplot}\hlstd{(}\hlkwd{data.frame}\hlstd{(}\hlkwc{length} \hlstd{=} \hlkwd{rep}\hlstd{(lengths,} \hlnum{2}\hlstd{),}
+                   \hlkwc{type} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlkwd{c}\hlstd{(}\hlstr{"indices"}\hlstd{,} \hlstr{"boolean"}\hlstd{),} \hlkwc{each} \hlstd{=} \hlkwd{length}\hlstd{(lengths)),}
+                   \hlkwc{system_time} \hlstd{=} \hlkwd{c}\hlstd{(}\hlkwd{sapply}\hlstd{(times_list,} \hlstr{"[["}\hlstd{,} \hlnum{1}\hlstd{),} \hlkwd{sapply}\hlstd{(times_list,} \hlstr{"[["}\hlstd{,} \hlnum{2}\hlstd{))),}
+             \hlkwd{aes_string}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"length"}\hlstd{,} \hlkwc{y} \hlstd{=} \hlstr{"system_time"}\hlstd{,} \hlkwc{colour} \hlstd{=} \hlstr{"type"}\hlstd{))} \hlopt{+}
+   \hlkwd{geom_line}\hlstd{()} \hlopt{+} \hlkwd{geom_point}\hlstd{()} \hlopt{+}
+   \hlkwd{ggtitle}\hlstd{(}\hlstr{"Elapsed time vs length of vector to subset\textbackslash{}nfor a subset of 5000000 elements"}\hlstd{)} \hlopt{+}
+   \hlkwd{xlab}\hlstd{(}\hlstr{"Length of vector to subset"}\hlstd{)} \hlopt{+} \hlkwd{ylab}\hlstd{(}\hlstr{"Elapsed time to subset vector (seconds)"}\hlstd{)} \hlopt{+}
+   \hlkwd{scale_colour_discrete}\hlstd{(}\hlkwc{name} \hlstd{=} \hlstr{"Subsetting based on"}\hlstd{,}
+                         \hlkwc{breaks} \hlstd{=} \hlkwd{c}\hlstd{(}\hlstr{"indices"}\hlstd{,} \hlstr{"boolean"}\hlstd{),}
+                         \hlkwc{labels} \hlstd{=} \hlkwd{c}\hlstd{(}\hlstr{"indices"}\hlstd{,} \hlstr{"boolean"}\hlstd{))}
+ \hlkwd{print}\hlstd{(p)}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q2i} 
+
+\end{knitrout}
+
+Other than the length of the vector, an increase in the number of elements in the subset also increases the time taken to subset with order n.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlcom{# Examine how number of elements in subset affects timing}
+ \hlstd{nums_select} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{,} \hlnum{9}\hlstd{)}\hlopt{*}\hlnum{10000000}\hlstd{)}
+ \hlstd{times_list2} \hlkwb{<-} \hlkwd{lapply}\hlstd{(nums_select, CompareTime,} \hlkwc{length_vector} \hlstd{=} \hlnum{100000000}\hlstd{)}
+ \hlkwd{theme_set}\hlstd{(}\hlkwd{theme_bw}\hlstd{(}\hlkwc{base_size} \hlstd{=} \hlnum{8}\hlstd{)} \hlopt{+}
+             \hlkwd{theme}\hlstd{(}\hlkwc{plot.title} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlnum{1}\hlstd{),}
+                   \hlkwc{axis.title.x} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlopt{-}\hlnum{0.3}\hlstd{),}
+                   \hlkwc{axis.title.y} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlnum{1.1}\hlstd{)))}
+ \hlstd{p2} \hlkwb{<-} \hlkwd{ggplot}\hlstd{(}\hlkwd{data.frame}\hlstd{(}\hlkwc{num_select} \hlstd{=} \hlkwd{rep}\hlstd{(nums_select,} \hlnum{2}\hlstd{),}
+                         \hlkwc{type} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlkwd{c}\hlstd{(}\hlstr{"indices"}\hlstd{,} \hlstr{"boolean"}\hlstd{),} \hlkwc{each} \hlstd{=} \hlkwd{length}\hlstd{(nums_select)),}
+                         \hlkwc{system_time} \hlstd{=} \hlkwd{c}\hlstd{(}\hlkwd{sapply}\hlstd{(times_list2,} \hlstr{"[["}\hlstd{,} \hlnum{1}\hlstd{),} \hlkwd{sapply}\hlstd{(times_list2,} \hlstr{"[["}\hlstd{,} \hlnum{2}\hlstd{))),}
+              \hlkwd{aes_string}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"num_select"}\hlstd{,} \hlkwc{y} \hlstd{=} \hlstr{"system_time"}\hlstd{,} \hlkwc{colour} \hlstd{=} \hlstr{"type"}\hlstd{))} \hlopt{+}
+   \hlkwd{geom_line}\hlstd{()} \hlopt{+} \hlkwd{geom_point}\hlstd{()} \hlopt{+}
+   \hlkwd{ggtitle}\hlstd{(}\hlstr{"Elapsed time vs number of elements to subset\textbackslash{}nfor a vector of length 100000000"}\hlstd{)} \hlopt{+}
+   \hlkwd{xlab}\hlstd{(}\hlstr{"Number of elements in subset"}\hlstd{)} \hlopt{+} \hlkwd{ylab}\hlstd{(}\hlstr{"Elapsed time to subset vector (seconds)"}\hlstd{)} \hlopt{+}
+   \hlkwd{scale_colour_discrete}\hlstd{(}\hlkwc{name} \hlstd{=} \hlstr{"Subsetting based on"}\hlstd{,}
+                         \hlkwc{breaks} \hlstd{=} \hlkwd{c}\hlstd{(}\hlstr{"indices"}\hlstd{,} \hlstr{"boolean"}\hlstd{),}
+                         \hlkwc{labels} \hlstd{=} \hlkwd{c}\hlstd{(}\hlstr{"indices"}\hlstd{,} \hlstr{"boolean"}\hlstd{))}
+ \hlkwd{print}\hlstd{(p2)}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q2ii} 
+
+\end{knitrout}
+%================================================================================
+\section{Problem 3}
+(a) Memory addresses of all components of the data frame except for that changed column remain the same, which means that the column is copied to a new memory address.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{data_file} \hlkwb{<-} \hlstr{"data/cpds.csv"}
+\hlstd{data} \hlkwb{<-} \hlkwd{read.csv}\hlstd{(data_file)}
+\hlkwd{.Internal}\hlstd{(}\hlkwd{inspect}\hlstd{(data))}
+\hlstd{data[}\hlnum{1}\hlstd{,} \hlkwd{colnames}\hlstd{(data)} \hlopt{==} \hlstr{"year"}\hlstd{]} \hlkwb{<-} \hlstd{data[}\hlnum{1}\hlstd{,} \hlkwd{colnames}\hlstd{(data)} \hlopt{==} \hlstr{"year"}\hlstd{]} \hlopt{+} \hlnum{1}
+\hlkwd{.Internal}\hlstd{(}\hlkwd{inspect}\hlstd{(data))}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+(b) For a list, only the changed vector is copied.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{data} \hlkwb{<-} \hlkwd{read.csv}\hlstd{(data_file)}
+\hlstd{data_list} \hlkwb{<-} \hlkwd{as.list}\hlstd{(data)}
+\hlkwd{.Internal}\hlstd{(}\hlkwd{inspect}\hlstd{(data_list))}
+\hlstd{data_list[[}\hlstr{"year"}\hlstd{]][}\hlnum{1}\hlstd{]} \hlkwb{<-} \hlstd{data_list[[}\hlstr{"year"}\hlstd{]][}\hlnum{1}\hlstd{]} \hlopt{+} \hlnum{1}
+\hlkwd{.Internal}\hlstd{(}\hlkwd{inspect}\hlstd{(data_list))}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\section{Problem 4}
+The possible values that can be taken on each axis at each time step is 0 (with probability 0.5), -1 and 1 (with probability 0.25 each). 
+Hence I created two vectors \texttt{units\_x} and \texttt{units\_y}, both of length 4 with these values (with one repeated 0) and made sure that for the same index, when \texttt{units\_x} is nonzero, \texttt{units\_y} is zero and vice versa. I then sampled the indices 1 to 4 with replacement for a user-defined number of steps \texttt{num\_steps} to get the step taken at each time step, then used \texttt{cumsum} to obtain the full random walk.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlcom{# Setting an rw class}
+ \hlkwd{setClass}\hlstd{(}\hlstr{"rw"}\hlstd{,}
+          \hlkwc{slots} \hlstd{=} \hlkwd{c}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"numeric"}\hlstd{,} \hlkwc{y} \hlstd{=} \hlstr{"numeric"}\hlstd{,} \hlkwc{num_steps} \hlstd{=} \hlstr{"numeric"}\hlstd{),}
+          \hlkwc{prototype} \hlstd{=} \hlkwd{list}\hlstd{(}\hlkwc{x} \hlstd{=} \hlkwd{numeric}\hlstd{(),} \hlkwc{y} \hlstd{=} \hlkwd{numeric}\hlstd{(),} \hlkwc{num_steps} \hlstd{=} \hlkwd{numeric}\hlstd{()),}
+          \hlkwc{validity} \hlstd{=} \hlkwa{function}\hlstd{(}\hlkwc{object}\hlstd{) \{}
+            \hlkwa{if} \hlstd{(}\hlkwd{length}\hlstd{(object}\hlopt{@}\hlkwc{num_steps}\hlstd{)} \hlopt{!=} \hlnum{1}\hlstd{)}
+              \hlkwd{return}\hlstd{(}\hlstr{"Error: num_steps must be a scalar."}\hlstd{)}
+            \hlkwa{if} \hlstd{(object}\hlopt{@}\hlkwc{num_steps} \hlopt{<=} \hlnum{0}\hlstd{)}
+              \hlkwd{stop}\hlstd{(}\hlstr{"num_steps has to be a positive integer."}\hlstd{)}
+            \hlkwa{if} \hlstd{(object}\hlopt{@}\hlkwc{num_steps} \hlopt{%%} \hlnum{1} \hlopt{!=} \hlnum{0}\hlstd{)}
+              \hlkwd{stop}\hlstd{(}\hlstr{"num_steps has to be an integer."}\hlstd{)}
+            \hlkwa{if} \hlstd{(}\hlopt{!}\hlstd{(}\hlkwd{all}\hlstd{(}\hlkwd{length}\hlstd{(object}\hlopt{@}\hlkwc{x}\hlstd{)} \hlopt{==} \hlkwd{length}\hlstd{(object}\hlopt{@}\hlkwc{y}\hlstd{),} \hlkwd{length}\hlstd{(object}\hlopt{@}\hlkwc{x}\hlstd{)} \hlopt{==} \hlstd{(object}\hlopt{@}\hlkwc{num_steps} \hlopt{+} \hlnum{1}\hlstd{))))}
+              \hlkwd{return}\hlstd{(}\hlstr{"Error: Lengths of x and y must be equal to num_steps+1."}\hlstd{)}
+            \hlkwd{return}\hlstd{(}\hlnum{TRUE}\hlstd{)}
+          \hlstd{\})}
+ \hlcom{#' Generate a 2D random walk.}
+ \hlcom{#' }
+ \hlcom{#' Generate a discrete random walk in two dimensions with uniform probability of moving up, down,}
+ \hlcom{#' left, right by 1 unit at each step (+/- 1 on the x- or y-axis).}
+ \hlcom{#' }
+ \hlcom{#' @param num_steps Number of steps of the random walk to generate.}
+ \hlcom{#' @param full_walk \textbackslash{}code\{TRUE\} return full random walk, \textbackslash{}code\{FALSE\} to return final position.}
+ \hlcom{#' @return A list object containing: }
+ \hlcom{#' \textbackslash{}describe\{}
+ \hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{x\}\}\{Integer vector of length \textbackslash{}code\{num_steps+1\} of x-coordinates of the random walk }
+ \hlcom{#'   if \textbackslash{}code\{full_walk\} is TRUE and of length \textbackslash{}code\{1\} of final x-coordinate if \textbackslash{}code\{full_walk\} is FALSE.\}}
+ \hlcom{#'   \textbackslash{}item\{\textbackslash{}code\{y\}\}\{Integer vector of length \textbackslash{}code\{num_steps+1\} of y-coordinates of the random walk}
+ \hlcom{#'   if \textbackslash{}code\{full_walk\} is TRUE and of length \textbackslash{}code\{1\} of final y-coordinate if \textbackslash{}code\{full_walk\} is FALSE.\}}
+ \hlcom{#' \}}
+\hlstd{Generate2DRandomWalk} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{num_steps}\hlstd{,} \hlkwc{full_walk} \hlstd{=} \hlnum{TRUE}\hlstd{) \{}
+  \hlcom{# Return error if num_steps is not a scalar, is negative or zero and warning if it is not an integer}
+  \hlkwa{if} \hlstd{(}\hlkwd{length}\hlstd{(num_steps)} \hlopt{!=} \hlnum{1}\hlstd{)}
+    \hlkwd{stop}\hlstd{(}\hlstr{"num_steps must be a scalar."}\hlstd{)}
+  \hlkwa{if} \hlstd{(num_steps} \hlopt{<=} \hlnum{0}\hlstd{)}
+    \hlkwd{stop}\hlstd{(}\hlstr{"num_steps has to be a positive integer."}\hlstd{)}
+  \hlkwa{if} \hlstd{(num_steps} \hlopt{%%} \hlnum{1} \hlopt{!=} \hlnum{0}\hlstd{) \{}
+    \hlstd{num_steps} \hlkwb{<-} \hlkwd{as.integer}\hlstd{(num_steps)}
+    \hlkwd{warning}\hlstd{(}\hlstr{"num_steps has been converted to an integer."}\hlstd{)}
+  \hlstd{\}}
+  \hlcom{# Return error if full_walk is not logical}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{is.logical}\hlstd{(full_walk))}
+    \hlkwd{stop}\hlstd{(}\hlstr{"full_walk has to be TRUE or FALSE"}\hlstd{)}
+  \hlcom{# Do random walk}
+  \hlstd{units_x} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{0}\hlstd{,} \hlnum{0}\hlstd{,} \hlopt{-}\hlnum{1}\hlstd{,} \hlnum{1}\hlstd{)}
+  \hlstd{units_y} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlopt{-}\hlnum{1}\hlstd{,} \hlnum{1}\hlstd{,} \hlnum{0}\hlstd{,} \hlnum{0}\hlstd{)}
+  \hlstd{step_indices} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlnum{1}\hlopt{:}\hlnum{4}\hlstd{, num_steps,} \hlkwc{replace} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+  \hlstd{steps_x} \hlkwb{<-} \hlstd{units_x[step_indices]}
+  \hlstd{steps_y} \hlkwb{<-} \hlstd{units_y[step_indices]}
+  \hlstd{x} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{cumsum}\hlstd{(steps_x))}
+  \hlstd{y} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{cumsum}\hlstd{(steps_y))}
+  \hlkwa{if} \hlstd{(full_walk) \{}
+    \hlstd{rw} \hlkwb{<-} \hlkwd{new}\hlstd{(}\hlstr{"rw"}\hlstd{,} \hlkwc{x} \hlstd{= x,} \hlkwc{y} \hlstd{= y,} \hlkwc{num_steps} \hlstd{= num_steps)}
+  \hlstd{\}} \hlkwa{else} \hlstd{\{}
+    \hlstd{rw} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{x} \hlstd{=} \hlkwd{tail}\hlstd{(x,} \hlkwc{n} \hlstd{=} \hlnum{1}\hlstd{),} \hlkwc{y} \hlstd{=} \hlkwd{tail}\hlstd{(y,} \hlkwc{n} \hlstd{=} \hlnum{1}\hlstd{),} \hlkwc{num_steps} \hlstd{= num_steps)}
+  \hlstd{\}}
+  \hlkwd{return}\hlstd{(rw)}
+\hlstd{\}}
+
+ \hlcom{# Method print}
+\hlstd{print.rw} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{) \{}
+  \hlkwd{cat}\hlstd{(}\hlkwd{paste0}\hlstd{(}\hlstr{"Final x-coordinate: "}\hlstd{,} \hlkwd{tail}\hlstd{(x}\hlopt{@}\hlkwc{x}\hlstd{,} \hlkwc{n} \hlstd{=} \hlnum{1}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{,}
+             \hlstr{"Final y-coordinate: "}\hlstd{,} \hlkwd{tail}\hlstd{(x}\hlopt{@}\hlkwc{y}\hlstd{,} \hlkwc{n} \hlstd{=} \hlnum{1}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{,}
+             \hlstr{"Maximum distance moved along x-axis: "}\hlstd{,}
+             \hlkwd{max}\hlstd{(x}\hlopt{@}\hlkwc{x}\hlstd{)} \hlopt{-} \hlkwd{min}\hlstd{(x}\hlopt{@}\hlkwc{x}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{,}
+             \hlstr{"Maximum distance moved along y-axis: "}\hlstd{,}
+             \hlkwd{max}\hlstd{(x}\hlopt{@}\hlkwc{y}\hlstd{)} \hlopt{-} \hlkwd{min}\hlstd{(x}\hlopt{@}\hlkwc{y}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{))}
+\hlstd{\}}
+\hlkwd{setMethod}\hlstd{(}\hlstr{"print"}\hlstd{,} \hlkwd{signature}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"rw"}\hlstd{),} \hlkwc{definition} \hlstd{= print.rw)}
+\end{alltt}
+
+
+{\ttfamily\noindent\itshape\color{messagecolor}{\#\# Creating a generic function for 'print' from package 'base' in the global environment}}\begin{verbatim}
+## [1] "print"
+\end{verbatim}
+\begin{alltt}
+ \hlcom{# Method plot}
+\hlstd{plot.rw} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{,} \hlkwc{y}\hlstd{) \{}
+  \hlkwd{theme_set}\hlstd{(}\hlkwd{theme_bw}\hlstd{(}\hlkwc{base_size} \hlstd{=} \hlnum{10}\hlstd{)} \hlopt{+}
+              \hlkwd{theme}\hlstd{(}\hlkwc{plot.title} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{size} \hlstd{=} \hlnum{10}\hlstd{,} \hlkwc{vjust} \hlstd{=} \hlnum{1}\hlstd{),}
+                    \hlkwc{axis.title.x} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlopt{-}\hlnum{0.3}\hlstd{),}
+                    \hlkwc{axis.title.y} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{vjust} \hlstd{=} \hlnum{1.1}\hlstd{)))}
+  \hlstd{p} \hlkwb{<-} \hlkwd{ggplot}\hlstd{(}\hlkwd{data.frame}\hlstd{(}\hlkwc{x} \hlstd{= x}\hlopt{@}\hlkwc{x}\hlstd{,} \hlkwc{y} \hlstd{= x}\hlopt{@}\hlkwc{y}\hlstd{),}
+              \hlkwd{aes}\hlstd{(}\hlkwc{x} \hlstd{= x,} \hlkwc{y} \hlstd{= y))} \hlopt{+} \hlkwd{geom_path}\hlstd{(}\hlkwc{alpha} \hlstd{=} \hlnum{0.5}\hlstd{)} \hlopt{+}
+    \hlkwd{geom_hline}\hlstd{(}\hlkwc{yintercept} \hlstd{=} \hlnum{0}\hlstd{)} \hlopt{+} \hlkwd{geom_vline}\hlstd{(}\hlkwc{xintercept} \hlstd{=} \hlnum{0}\hlstd{)} \hlopt{+}
+    \hlkwd{geom_point}\hlstd{(}\hlkwc{x} \hlstd{= x}\hlopt{@}\hlkwc{x}\hlstd{[}\hlnum{1}\hlstd{],} \hlkwc{y} \hlstd{= x}\hlopt{@}\hlkwc{y}\hlstd{[}\hlnum{1}\hlstd{])} \hlopt{+} \hlcom{# starting position}
+    \hlkwd{geom_point}\hlstd{(}\hlkwc{x} \hlstd{= x}\hlopt{@}\hlkwc{x}\hlstd{[x}\hlopt{@}\hlkwc{num_steps}\hlopt{+}\hlnum{1}\hlstd{],} \hlkwc{y} \hlstd{= x}\hlopt{@}\hlkwc{y}\hlstd{[x}\hlopt{@}\hlkwc{num_steps}\hlopt{+}\hlnum{1}\hlstd{],} \hlkwc{colour} \hlstd{=} \hlstr{"red"}\hlstd{)} \hlopt{+} \hlcom{# ending position}
+    \hlkwd{ggtitle}\hlstd{(}\hlkwd{paste0}\hlstd{(}\hlstr{"2D random walk of \textbackslash{}nlength "}\hlstd{, x}\hlopt{@}\hlkwc{num_steps}\hlstd{))} \hlopt{+}
+    \hlkwd{xlim}\hlstd{(}\hlkwd{range}\hlstd{(x}\hlopt{@}\hlkwc{x}\hlstd{))} \hlopt{+} \hlkwd{ylim}\hlstd{(}\hlkwd{range}\hlstd{(x}\hlopt{@}\hlkwc{y}\hlstd{))} \hlopt{+}
+    \hlkwd{coord_fixed}\hlstd{()}
+  \hlkwd{print}\hlstd{(p)}
+\hlstd{\}}
+\hlkwd{setMethod}\hlstd{(}\hlstr{"plot"}\hlstd{,} \hlkwd{signature}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"rw"}\hlstd{,} \hlkwc{y} \hlstd{=} \hlstr{"missing"}\hlstd{),} \hlkwc{definition} \hlstd{= plot.rw)}
+\end{alltt}
+
+
+{\ttfamily\noindent\itshape\color{messagecolor}{\#\# Creating a generic function for 'plot' from package 'graphics' in the global environment}}\begin{verbatim}
+## [1] "plot"
+\end{verbatim}
+\begin{alltt}
+ \hlcom{# Method [}
+\hlkwd{setMethod}\hlstd{(}\hlstr{"["}\hlstd{,} \hlkwd{signature}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"rw"}\hlstd{),}
+          \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{,} \hlkwc{i}\hlstd{) \{}
+            \hlkwa{if} \hlstd{(i} \hlopt{<} \hlnum{0} \hlopt{|} \hlstd{i} \hlopt{>} \hlstd{x}\hlopt{@}\hlkwc{num_steps}\hlstd{)}
+              \hlkwd{stop}\hlstd{(}\hlstr{"i must be between 0 and num_steps (inclusive)."}\hlstd{)}
+            \hlkwd{return}\hlstd{(}\hlkwd{list}\hlstd{(}\hlkwc{x} \hlstd{= x}\hlopt{@}\hlkwc{x}\hlstd{[i}\hlopt{+}\hlnum{1}\hlstd{],} \hlkwc{y} \hlstd{= x}\hlopt{@}\hlkwc{y}\hlstd{[i}\hlopt{+}\hlnum{1}\hlstd{]))}
+          \hlstd{\})}
+\end{alltt}
+\begin{verbatim}
+## [1] "["
+\end{verbatim}
+\begin{alltt}
+ \hlcom{# Method start}
+\hlkwd{setGeneric}\hlstd{(}\hlstr{"start<-"}\hlstd{,} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{,} \hlkwc{...}\hlstd{) \{}
+  \hlkwd{standardGeneric}\hlstd{(}\hlstr{"start<-"}\hlstd{)}
+\hlstd{\})}
+\end{alltt}
+\begin{verbatim}
+## [1] "start<-"
+\end{verbatim}
+\begin{alltt}
+\hlstd{`start.rw<-`} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{,} \hlkwc{value}\hlstd{) \{}
+  \hlstd{x}\hlopt{@}\hlkwc{x} \hlkwb{<-} \hlstd{x}\hlopt{@}\hlkwc{x} \hlopt{+} \hlstd{value[}\hlnum{1}\hlstd{]}
+  \hlstd{x}\hlopt{@}\hlkwc{y} \hlkwb{<-} \hlstd{x}\hlopt{@}\hlkwc{y} \hlopt{+} \hlstd{value[}\hlnum{2}\hlstd{]}
+  \hlkwd{return}\hlstd{(x)}
+\hlstd{\}}
+\hlkwd{setReplaceMethod}\hlstd{(}\hlstr{"start"}\hlstd{,} \hlkwd{signature}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"rw"}\hlstd{),}
+                 \hlkwc{definition} \hlstd{= `start.rw<-`)}
+\end{alltt}
+\begin{verbatim}
+## [1] "start<-"
+\end{verbatim}
+\begin{alltt}
+ \hlcom{# Test function and class-specific methods}
+ \hlstd{rw_object} \hlkwb{<-} \hlkwd{Generate2DRandomWalk}\hlstd{(}\hlkwc{num_steps} \hlstd{=} \hlnum{1000}\hlstd{)}
+ \hlcom{# Call class-specific methods}
+ \hlkwd{print}\hlstd{(rw_object)}
+\end{alltt}
+\begin{verbatim}
+## Final x-coordinate: -1
+## Final y-coordinate: -9
+## Maximum distance moved along x-axis: 24
+## Maximum distance moved along y-axis: 39
+\end{verbatim}
+\begin{alltt}
+ \hlkwd{plot}\hlstd{(rw_object)}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q41} 
+\begin{kframe}\begin{alltt}
+ \hlstd{rw_object[rw_object}\hlopt{@}\hlkwc{num_steps}\hlstd{]}
+\end{alltt}
+\begin{verbatim}
+## $x
+## [1] -1
+## 
+## $y
+## [1] -9
+\end{verbatim}
+\begin{alltt}
+ \hlkwd{start}\hlstd{(rw_object)} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{1000}\hlstd{,} \hlnum{2000}\hlstd{)}
+ \hlkwd{plot}\hlstd{(rw_object)}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q42} 
+
+\end{knitrout}
+%================================================================================
+\section{Problem 5}
+(a) I inserted calls to \texttt{gc} and  \texttt{object.size} to check memory usage at different points in the function.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(inline)}
+\hlcom{# this code is simply a placeholder to demonstrate that I can}
+\hlcom{# modify the input arguments as desired in C;}
+\hlcom{# in reality 'src' would contain substantive computations}
+\hlstd{src} \hlkwb{<-} \hlstr{'
+tablex[0] = 7;
+'}
+
+\hlstd{dummyFun} \hlkwb{<-} \hlkwd{cfunction}\hlstd{(}\hlkwd{signature}\hlstd{(}\hlkwc{tablex} \hlstd{=} \hlstr{"integer"}\hlstd{,} \hlkwc{tabley} \hlstd{=} \hlstr{"integer"}\hlstd{,}
+                                \hlkwc{xvar} \hlstd{=} \hlstr{"integer"}\hlstd{,} \hlkwc{yvar} \hlstd{=} \hlstr{"integer"}\hlstd{,} \hlkwc{useline} \hlstd{=} \hlstr{"integer"}\hlstd{,}
+                                \hlkwc{n} \hlstd{=} \hlstr{"integer"}\hlstd{), src,} \hlkwc{convention} \hlstd{=} \hlstr{".C"}\hlstd{)}
+
+\hlstd{fastcount} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{xvar}\hlstd{,}\hlkwc{yvar}\hlstd{) \{}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of xvar:"}\hlstd{,} \hlkwd{object.size}\hlstd{(xvar)))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of yvar:"}\hlstd{,} \hlkwd{object.size}\hlstd{(yvar)))}
+  \hlstd{nalineX} \hlkwb{<-} \hlkwd{is.na}\hlstd{(xvar)}
+  \hlkwd{print}\hlstd{(}\hlstr{"nalineX <- is.na(xvar)"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of nalineX:"}\hlstd{,} \hlkwd{object.size}\hlstd{(nalineX)))}
+  \hlstd{nalineY} \hlkwb{<-} \hlkwd{is.na}\hlstd{(yvar)}
+  \hlkwd{print}\hlstd{(}\hlstr{"nalineY <- is.na(yvar)"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of nalineY:"}\hlstd{,} \hlkwd{object.size}\hlstd{(nalineY)))}
+  \hlstd{xvar[nalineX} \hlopt{|} \hlstd{nalineY]} \hlkwb{<-} \hlnum{0}
+  \hlkwd{print}\hlstd{(}\hlstr{"xvar[nalineX | nalineY] <- 0"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of nalineX | nalineY:"}\hlstd{,} \hlkwd{object.size}\hlstd{(nalineX} \hlopt{|} \hlstd{nalineY)))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of xvar[nalineX | nalineY]:"}\hlstd{,} \hlkwd{object.size}\hlstd{(xvar[nalineX} \hlopt{|} \hlstd{nalineY])))}
+  \hlstd{yvar[nalineX} \hlopt{|} \hlstd{nalineY]} \hlkwb{<-} \hlnum{0}
+  \hlkwd{print}\hlstd{(}\hlstr{"yvar[nalineX | nalineY] <- 0"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of yvar[nalineX | nalineY]:"}\hlstd{,} \hlkwd{object.size}\hlstd{(yvar[nalineX} \hlopt{|} \hlstd{nalineY])))}
+  \hlstd{useline} \hlkwb{<-} \hlopt{!}\hlstd{(nalineX} \hlopt{|} \hlstd{nalineY)}
+  \hlkwd{print}\hlstd{(}\hlstr{"useline <- !(nalineX | nalineY)"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of useline:"}\hlstd{,} \hlkwd{object.size}\hlstd{(useline)))}
+  \hlstd{tablex} \hlkwb{<-} \hlkwd{numeric}\hlstd{(}\hlkwd{max}\hlstd{(xvar)}\hlopt{+}\hlnum{1}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlstr{"tablex <- numeric(max(xvar)+1)"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of tablex:"}\hlstd{,} \hlkwd{object.size}\hlstd{(tablex)))}
+  \hlstd{tabley} \hlkwb{<-} \hlkwd{numeric}\hlstd{(}\hlkwd{max}\hlstd{(yvar)}\hlopt{+}\hlnum{1}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlstr{"tabley <- numeric(max(yvar)+1)"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of tabley:"}\hlstd{,} \hlkwd{object.size}\hlstd{(tabley)))}
+  \hlkwd{stopifnot}\hlstd{(}\hlkwd{length}\hlstd{(xvar)} \hlopt{==} \hlkwd{length}\hlstd{(yvar))}
+  \hlstd{res} \hlkwb{<-} \hlkwd{dummyFun}\hlstd{(}
+    \hlkwc{tablex} \hlstd{=} \hlkwd{as.integer}\hlstd{(tablex),} \hlkwc{tabley} \hlstd{=} \hlkwd{as.integer}\hlstd{(tabley),}
+    \hlkwd{as.integer}\hlstd{(xvar),} \hlkwd{as.integer}\hlstd{(yvar),} \hlkwd{as.integer}\hlstd{(useline),}
+    \hlkwd{as.integer}\hlstd{(}\hlkwd{length}\hlstd{(xvar)))}
+  \hlkwd{print}\hlstd{(}\hlstr{"res <- dummyFun()"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of as.integer(tablex):"}\hlstd{,} \hlkwd{object.size}\hlstd{(}\hlkwd{as.integer}\hlstd{(tablex))))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of as.integer(tabley):"}\hlstd{,} \hlkwd{object.size}\hlstd{(}\hlkwd{as.integer}\hlstd{(tabley))))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of as.integer(xvar):"}\hlstd{,} \hlkwd{object.size}\hlstd{(}\hlkwd{as.integer}\hlstd{(xvar))))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of as.integer(yvar):"}\hlstd{,} \hlkwd{object.size}\hlstd{(}\hlkwd{as.integer}\hlstd{(yvar))))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of as.integer(useline):"}\hlstd{,} \hlkwd{object.size}\hlstd{(}\hlkwd{as.integer}\hlstd{(useline))))}
+  \hlstd{xuse} \hlkwb{<-} \hlkwd{which}\hlstd{(res}\hlopt{$}\hlstd{tablex} \hlopt{>} \hlnum{0}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlstr{"xuse <- which(res$tablex > 0)"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of res$tablex > 0:"}\hlstd{,} \hlkwd{object.size}\hlstd{(res}\hlopt{$}\hlstd{tablex} \hlopt{>} \hlnum{0}\hlstd{)))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of xuse:"}\hlstd{,} \hlkwd{object.size}\hlstd{(xuse)))}
+  \hlstd{xnames} \hlkwb{<-} \hlstd{xuse} \hlopt{-} \hlnum{1}
+  \hlkwd{print}\hlstd{(}\hlstr{"xnames <- xuse - 1"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of xnames:"}\hlstd{,} \hlkwd{object.size}\hlstd{(xnames)))}
+  \hlstd{resb} \hlkwb{<-} \hlkwd{rbind}\hlstd{(res}\hlopt{$}\hlstd{tablex[xuse], res}\hlopt{$}\hlstd{tabley[xuse])}
+  \hlkwd{print}\hlstd{(}\hlstr{"resb <- rbind(res$tablex[xuse], res$tabley[xuse])"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of res$tablex[xuse]:"}\hlstd{,} \hlkwd{object.size}\hlstd{(res}\hlopt{$}\hlstd{tablex[xuse])))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of res$tabley[xuse]:"}\hlstd{,} \hlkwd{object.size}\hlstd{(res}\hlopt{$}\hlstd{tabley[xuse])))}
+  \hlkwd{print}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"Object size of resb:"}\hlstd{,} \hlkwd{object.size}\hlstd{(resb)))}
+  \hlkwd{colnames}\hlstd{(resb)} \hlkwb{<-} \hlstd{xnames}
+  \hlkwd{print}\hlstd{(}\hlstr{"colnames(resb) <- xnames"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{return}\hlstd{(resb)}
+\hlstd{\}}
+
+\hlstd{n} \hlkwb{<-} \hlnum{1e7}
+\hlkwd{set.seed}\hlstd{(}\hlnum{1}\hlstd{)}
+\hlstd{xvar} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlkwd{c}\hlstd{(}\hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{,} \hlnum{20}\hlstd{,} \hlkwc{by} \hlstd{=} \hlnum{1}\hlstd{),} \hlnum{NA}\hlstd{), n,} \hlkwc{replace} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+\hlstd{yvar} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlkwd{c}\hlstd{(}\hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{,} \hlnum{20}\hlstd{,} \hlkwc{by} \hlstd{=} \hlnum{1}\hlstd{),} \hlnum{NA}\hlstd{), n,} \hlkwc{replace} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+\hlstd{resb} \hlkwb{<-} \hlkwd{fastcount}\hlstd{(xvar, yvar)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+The amount of memory used as its maximum is 653.4 Mb at the end of the code. From the output, it is clear that all the objects of similar size to \texttt{xvar} and \texttt{yvar} are large.
+\begin{verbatim}
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362856  19.4     667722  35.7   467875  25.0
+Vcells 20630517 157.4   32407041 247.3 30632195 233.8
+[1] "Object size of xvar: 80000040"
+[1] "Object size of yvar: 80000040"
+[1] "nalineX <- is.na(xvar)"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362948  19.4     667722  35.7   467875  25.0
+Vcells 25630642 195.6   34107393 260.3 30632195 233.8
+[1] "Object size of nalineX: 40000040"
+[1] "nalineY <- is.na(yvar)"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362950  19.4     667722  35.7   467875  25.0
+Vcells 30630642 233.7   35892762 273.9 30632195 233.8
+[1] "Object size of nalineY: 40000040"
+[1] "xvar[nalineX | nalineY] <- 0"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362953  19.4     667722  35.7   467875  25.0
+Vcells 40630642 310.0   56157671 428.5 51095785 389.9
+[1] "Object size of nalineX | nalineY: 40000040"
+[1] "Object size of xvar[nalineX | nalineY]: 7442152"
+[1] "yvar[nalineX | nalineY] <- 0"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362954  19.4     667722  35.7   467875  25.0
+Vcells 50630642 386.3   67182671 512.6 61095785 466.2
+[1] "Object size of yvar[nalineX | nalineY]: 7442152"
+[1] "useline <- !(nalineX | nalineY)"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362957  19.4     667722  35.7   467875  25.0
+Vcells 55630642 424.5   70621804 538.9 67026247 511.4
+[1] "Object size of useline: 40000040"
+[1] "tablex <- numeric(max(xvar)+1)"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362962  19.4     667722  35.7   467875  25.0
+Vcells 55630663 424.5   74232894 566.4 67026247 511.4
+[1] "Object size of tablex: 208"
+[1] "tabley <- numeric(max(yvar)+1)"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362964  19.4     667722  35.7   467875  25.0
+Vcells 55630684 424.5   78024538 595.3 67026247 511.4
+[1] "Object size of tabley: 208"
+[1] "res <- dummyFun()"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362990  19.4     667722  35.7   467875  25.0
+Vcells 70630738 538.9   94745321 722.9 85630790 653.4
+[1] "Object size of as.integer(tablex): 168"
+[1] "Object size of as.integer(tabley): 168"
+[1] "Object size of as.integer(xvar): 40000040"
+[1] "Object size of as.integer(yvar): 40000040"
+[1] "Object size of as.integer(useline): 40000040"
+[1] "xuse <- which(res$tablex > 0)"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362994  19.4     667722  35.7   467875  25.0
+Vcells 70630739 538.9   99562587 759.7 85631439 653.4
+[1] "Object size of res$tablex > 0: 168"
+[1] "Object size of xuse: 48"
+[1] "xnames <- xuse - 1"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   362997  19.4     667722  35.7   467875  25.0
+Vcells 70630740 538.9  104620716 798.2 85631439 653.4
+[1] "Object size of xnames: 48"
+[1] "resb <- rbind(res$tablex[xuse], res$tabley[xuse])"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   363002  19.4     667722  35.7   467875  25.0
+Vcells 70630742 538.9  104620716 798.2 85631439 653.4
+[1] "Object size of res$tablex[xuse]: 48"
+[1] "Object size of res$tabley[xuse]: 48"
+[1] "Object size of resb: 208"
+[1] "colnames(resb) <- xnames"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   363148  19.4     667722  35.7   467875  25.0
+Vcells 70630992 538.9  104620716 798.2 85631439 653.4
+\end{verbatim}
+
+(b) My rewritten function to minimize memory use is given below. Many objects were simply slightly-modified versions of \texttt{nalineX} and \texttt{nalineY}, so I recoded those lines to remove the redundant objects to reduce memory use.
+  
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{fastcountnew} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{xvar}\hlstd{,} \hlkwc{yvar}\hlstd{) \{}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlstd{select.na} \hlkwb{<-} \hlkwd{is.na}\hlstd{(xvar} \hlopt{+} \hlstd{yvar)}
+  \hlkwd{print}\hlstd{(}\hlstr{"select.na <- is.na(xvar + yvar)"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlstd{xvar[select.na]} \hlkwb{<-} \hlstd{yvar[select.na]} \hlkwb{<-} \hlnum{0}
+  \hlkwd{print}\hlstd{(}\hlstr{"stopifnot(length(xvar) == length(yvar))"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{stopifnot}\hlstd{(}\hlkwd{length}\hlstd{(xvar)} \hlopt{==} \hlkwd{length}\hlstd{(yvar))}
+  \hlkwd{print}\hlstd{(}\hlstr{"stopifnot(length(xvar) == length(yvar))"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlstd{res} \hlkwb{<-} \hlkwd{dummyFun}\hlstd{(}
+    \hlkwc{tablex} \hlstd{=} \hlkwd{as.integer}\hlstd{(}\hlkwd{max}\hlstd{(xvar)}\hlopt{+}\hlnum{1}\hlstd{),} \hlkwc{tabley} \hlstd{=} \hlkwd{as.integer}\hlstd{(}\hlkwd{max}\hlstd{(yvar)}\hlopt{+}\hlnum{1}\hlstd{),}
+    \hlkwc{xvar} \hlstd{=} \hlkwd{as.integer}\hlstd{(xvar),} \hlkwc{yvar} \hlstd{=} \hlkwd{as.integer}\hlstd{(yvar),}
+    \hlkwc{useline} \hlstd{=} \hlkwd{as.integer}\hlstd{(}\hlopt{!}\hlstd{select.na),} \hlkwc{n} \hlstd{=} \hlkwd{length}\hlstd{(xvar))}
+  \hlkwd{print}\hlstd{(}\hlstr{"res <- dummyFun()"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlstd{xuse} \hlkwb{<-} \hlkwd{which}\hlstd{(res}\hlopt{$}\hlstd{tablex} \hlopt{>} \hlnum{0}\hlstd{)}
+  \hlstd{xnames} \hlkwb{<-} \hlstd{xuse} \hlopt{-} \hlnum{1}
+  \hlstd{resb} \hlkwb{<-} \hlkwd{rbind}\hlstd{(res}\hlopt{$}\hlstd{tablex[xuse], res}\hlopt{$}\hlstd{tabley[xuse])}
+  \hlkwd{colnames}\hlstd{(resb)} \hlkwb{<-} \hlstd{xnames}
+  \hlkwd{print}\hlstd{(}\hlstr{"colnames(resb) <- xnames"}\hlstd{)}
+  \hlkwd{print}\hlstd{(}\hlkwd{gc}\hlstd{())}
+  \hlkwd{return}\hlstd{(resb)}
+\hlstd{\}}
+\hlstd{resbnew} \hlkwb{<-} \hlkwd{fastcountnew}\hlstd{(xvar, yvar)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+The memory use at different steps of the rewritten function is given below.
+
+\begin{verbatim}
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   326742  17.5     597831  32.0   407500  21.8
+Vcells 20575576 157.0   32349347 246.9 30576588 233.3
+[1] "select.na <- is.na(xvar + yvar)"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   326835  17.5     597831  32.0   407500  21.8
+Vcells 25575696 195.2   37599611 286.9 35575707 271.5
+[1] "stopifnot(length(xvar) == length(yvar))"
+used  (Mb) gc trigger (Mb) max used  (Mb)
+Ncells   326838  17.5     597831   32   407500  21.8
+Vcells 45575696 347.8   56097093  428 51040839 389.5
+[1] "stopifnot(length(xvar) == length(yvar))"
+used  (Mb) gc trigger (Mb) max used  (Mb)
+Ncells   326841  17.5     597831   32   407500  21.8
+Vcells 45575696 347.8   58981947  450 51040839 389.5
+[1] "res <- dummyFun()"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   326866  17.5     597831  32.0   407500  21.8
+Vcells 60575720 462.2   83659630 638.3 75575742 576.6
+[1] "colnames(resb) <- xnames"
+used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells   327041  17.5     597831  32.0   407500  21.8
+Vcells 60576003 462.2   87922611 670.8 75575742 576.6
+\end{verbatim}
+%================================================================================
+\section{Problem 6}
+My main improvement of the code lies in using \texttt{outer} to reduce the number of \texttt{for} loops used from 3 to 1, which vastly reduced the time taken. I also removed some redundant lines of code.
+
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# Improved and optimised code}
+\hlstd{likelihood} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{Theta}\hlstd{,} \hlkwc{A}\hlstd{) \{}
+  \hlstd{sum.ind} \hlkwb{<-} \hlkwd{which}\hlstd{(A} \hlopt{==} \hlnum{1}\hlstd{)}
+  \hlstd{log.likelihood} \hlkwb{<-} \hlkwd{sum}\hlstd{(}\hlkwd{log}\hlstd{(Theta[sum.ind]))} \hlopt{-} \hlkwd{sum}\hlstd{(Theta)}
+  \hlkwd{return}\hlstd{(log.likelihood)}
+\hlstd{\}}
+
+\hlstd{update_once} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{A}\hlstd{,} \hlkwc{n}\hlstd{,} \hlkwc{K}\hlstd{,} \hlkwc{theta.old}\hlstd{,} \hlkwc{threshold} \hlstd{=} \hlnum{0.1}\hlstd{) \{}
+  \hlstd{Theta.old} \hlkwb{<-} \hlstd{theta.old} \hlopt{%*%} \hlkwd{t}\hlstd{(theta.old)}
+  \hlstd{L.old} \hlkwb{<-} \hlkwd{likelihood}\hlstd{(Theta.old, A)}
+  \hlstd{q} \hlkwb{<-} \hlkwd{array}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwc{dim} \hlstd{=} \hlkwd{c}\hlstd{(n, n, K))}
+  \hlstd{theta.new} \hlkwb{<-} \hlstd{theta.old}
+  \hlkwa{for} \hlstd{(z} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{K) \{}
+    \hlstd{q[, , z]} \hlkwb{<-} \hlkwd{outer}\hlstd{(theta.old[, z], theta.old[, z])}\hlopt{/}\hlstd{Theta.old}
+    \hlstd{theta.new[, z]} \hlkwb{<-} \hlkwd{rowSums}\hlstd{(A}\hlopt{*}\hlstd{q[, , z])}\hlopt{/}\hlkwd{sqrt}\hlstd{(}\hlkwd{sum}\hlstd{(A}\hlopt{*}\hlstd{q[, , z]))}
+  \hlstd{\}}
+  \hlstd{Theta.new} \hlkwb{<-} \hlstd{theta.new} \hlopt{%*%} \hlkwd{t}\hlstd{(theta.new)}
+  \hlstd{L.new} \hlkwb{<-} \hlkwd{likelihood}\hlstd{(Theta.new, A)}
+  \hlstd{converge.check} \hlkwb{<-} \hlkwd{abs}\hlstd{(L.new} \hlopt{-} \hlstd{L.old)} \hlopt{<} \hlstd{threshold}
+  \hlstd{theta.new} \hlkwb{<-} \hlstd{theta.new}\hlopt{/}\hlkwd{rowSums}\hlstd{(theta.new)}
+  \hlkwd{return}\hlstd{(}\hlkwd{list}\hlstd{(}\hlkwc{theta} \hlstd{= theta.new,} \hlkwc{loglik} \hlstd{= L.new,}
+              \hlkwc{converged} \hlstd{= converge.check))}
+\hlstd{\}}
+
+\hlkwd{load}\hlstd{(}\hlstr{'ps4prob6.Rda'}\hlstd{)} \hlcom{# should have A, n, K}
+\hlcom{# Initialize the parameters at random starting values}
+\hlkwd{set.seed}\hlstd{(}\hlnum{1234}\hlstd{)}
+\hlstd{temp} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlkwd{runif}\hlstd{(n}\hlopt{*}\hlstd{K), n, K)}
+\hlstd{theta.init} \hlkwb{<-} \hlstd{temp}\hlopt{/}\hlkwd{rowSums}\hlstd{(temp)}
+
+\hlcom{# Comparison}
+\hlkwd{system.time}\hlstd{(out} \hlkwb{<-} \hlkwd{oneUpdate}\hlstd{(A, n, K, theta.init))}
+\end{alltt}
+\begin{verbatim}
+##    user  system elapsed 
+##  80.762   0.493  81.341
+\end{verbatim}
+\begin{alltt}
+\hlkwd{system.time}\hlstd{(out2} \hlkwb{<-} \hlkwd{update_once}\hlstd{(A, n, K, theta.init))}
+\end{alltt}
+\begin{verbatim}
+##    user  system elapsed 
+##   1.865   0.270   2.135
+\end{verbatim}
+\begin{alltt}
+\hlkwd{identical}\hlstd{(out, out2)}
+\end{alltt}
+\begin{verbatim}
+## [1] TRUE
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+\end{document}
