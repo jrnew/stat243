@@ -113,7 +113,7 @@ We can then calculate the likelihood by hand as either $e^{\ensuremath{-1862.330
 \end{knitrout}
 
 (b), (c) and (d)
-No, \texttt{sum()} does not give the right accuracy, but only up to 15 decimal places. In Python, it gives 0 decimal places whether I use the base \texttt{sum()} or from np. In both R and Python, using a \texttt{for} loop to do the summation with 1 as the first value in the vector do not give the right answer, but only a result with 0 decimal places of accuracy. With 1 as the last value in the vector, the right answer with 16 decimal places of accuracy is obtained.
+Yes, \texttt{sum()} give the right accuracy. In Python, it gives 0 decimal places whether I use the base \texttt{sum()} or from the numpy package. In both R and Python, using a \texttt{for} loop to do the summation with 1 as the first value in the vector do not give the right answer, but only a result with 0 decimal places of accuracy. With 1 as the last value in the vector, the right answer with 16 decimal places of accuracy is obtained.
 
 \begin{knitrout}
 \definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
@@ -127,7 +127,7 @@ No, \texttt{sum()} does not give the right accuracy, but only up to 15 decimal p
 ## [1] FALSE
 \end{verbatim}
 \begin{alltt}
-\hlkwd{sum}\hlstd{(x)} \hlcom{# 15 dp of accuracy}
+\hlkwd{sum}\hlstd{(x)} \hlcom{# Right answer}
 \end{alltt}
 \begin{verbatim}
 ## [1] 1.0000000000009996448
@@ -209,19 +209,28 @@ print(decimal.Decimal(sum_y)) # 16 dp of accuracy, right answer
 \end{kframe}
 \end{knitrout}
 
-(e) It suggests that R's \texttt{sum()} function does not simply sum from left to right, but either sums the numbers of higher precision first before the 
+(e) It suggests that R's \texttt{sum()} function does not simply sum from left to right.
 
-(f) The \texttt{sum} function in R calls a sum function written in C. The C source code is available at: \url{https://github.com/wch/r-source/blob/trunk/src/main/summary.c}. In C, the \texttt{do\_summary} function calls \texttt{rsum} to carry out summation of doubles.
+(f) The \texttt{sum} function in R calls a sum function written in C. The C source code is available at: \url{https://github.com/wch/r-source/blob/trunk/src/main/summary.c}. In C, the \texttt{do\_summary} function calls \texttt{rsum} to carry out summation of doubles. A long double (\texttt{LDOUBLE}) with higher precision than a double is used for the sum, hence the precision is kept.
 
-\begin{knitrout}
-\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
-\begin{alltt}
-\hlcom{# Code for sum()}
-\hlstd{sum}
-\end{alltt}
 \begin{verbatim}
-## function (..., na.rm = FALSE)  .Primitive("sum")
+static Rboolean rsum(double *x, R_xlen_t n, double *value, Rboolean narm)
+{
+    LDOUBLE s = 0.0;
+    Rboolean updated = FALSE;
+
+    for (R_xlen_t i = 0; i < n; i++) {
+  if (!narm || !ISNAN(x[i])) {
+	    if(!updated) updated = TRUE;
+	    s += x[i];
+	}
+    }
+    if(s > DBL_MAX) *value = R_PosInf;
+    else if (s < -DBL_MAX) *value = R_NegInf;
+    else *value = (double) s;
+
+    return updated;
+}
 \end{verbatim}
-\end{kframe}
-\end{knitrout}
+
 \end{document}
