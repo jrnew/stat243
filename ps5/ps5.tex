@@ -1,0 +1,227 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+% Add hyperlinks
+\usepackage{hyperref}
+
+\title{STAT 243: Problem Set 5}
+\author{Jin Rou New [jrnew]}
+\date{\today}
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+There was an overflow, since the result is smaller than the smallest number that can be represented, i.e. $e^{-1022}$. They should instead calculate the log likelihood by taking the sum of the logarithms of the probabilities.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{options}\hlstd{(}\hlkwc{digits} \hlstd{=} \hlnum{10}\hlstd{)}
+\hlkwd{load}\hlstd{(}\hlstr{"ps5prob1.Rda"}\hlstd{)}
+\hlstd{p} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{1}\hlopt{/}\hlstd{(}\hlnum{1} \hlopt{+} \hlkwd{exp}\hlstd{(}\hlopt{-}\hlstd{X} \hlopt{%*%} \hlstd{beta)))}
+\hlstd{likelihood} \hlkwb{<-} \hlkwd{prod}\hlstd{(}\hlkwd{dbinom}\hlstd{(y, n, p))} \hlcom{# Value of 0 obtained}
+\hlstd{likelihood}
+\end{alltt}
+\begin{verbatim}
+## [1] 0
+\end{verbatim}
+\begin{alltt}
+\hlstd{log_likelihood} \hlkwb{<-} \hlkwd{sum}\hlstd{(}\hlkwd{log}\hlstd{(}\hlkwd{dbinom}\hlstd{(y, n, p)))}
+\hlstd{log_likelihood}
+\end{alltt}
+\begin{verbatim}
+## [1] -1862.33088
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+We can then calculate the likelihood by hand as either $e^{\ensuremath{-1862.3309}}$ or $10^{\ensuremath{-1862.3309}}/ln(10) = 10^{\ensuremath{-1862.3309}}/2.3026$.
+
+%================================================================================
+\section{Problem 2}
+(a) We can expect 16 decimal places of accuracy at most for our result.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{options}\hlstd{(}\hlkwc{digits} \hlstd{=} \hlnum{20}\hlstd{)}
+\hlstd{num} \hlkwb{<-} \hlnum{1.000000000001}
+\hlstd{num}
+\end{alltt}
+\begin{verbatim}
+## [1] 1.0000000000010000889
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+(b), (c) and (d)
+No, \texttt{sum()} does not give the right accuracy, but only up to 15 decimal places. In Python, it gives 0 decimal places whether I use the base \texttt{sum()} or from np. In both R and Python, using a \texttt{for} loop to do the summation with 1 as the first value in the vector do not give the right answer, but only a result with 0 decimal places of accuracy. With 1 as the last value in the vector, the right answer with 16 decimal places of accuracy is obtained.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# In R}
+\hlkwd{options}\hlstd{(}\hlkwc{digits} \hlstd{=} \hlnum{20}\hlstd{)}
+\hlstd{x} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{1}\hlstd{,} \hlkwd{rep}\hlstd{(}\hlnum{1e-16}\hlstd{,} \hlnum{10000}\hlstd{))}
+\hlkwd{identical}\hlstd{(num,} \hlkwd{sum}\hlstd{(x))}
+\end{alltt}
+\begin{verbatim}
+## [1] FALSE
+\end{verbatim}
+\begin{alltt}
+\hlkwd{sum}\hlstd{(x)} \hlcom{# 15 dp of accuracy}
+\end{alltt}
+\begin{verbatim}
+## [1] 1.0000000000009996448
+\end{verbatim}
+\begin{alltt}
+\hlstd{sum_x} \hlkwb{<-} \hlnum{0}
+\hlkwa{for} \hlstd{(i} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{(}\hlkwd{length}\hlstd{(x)))}
+  \hlstd{sum_x} \hlkwb{<-} \hlstd{sum_x} \hlopt{+} \hlstd{x[i]}
+\hlkwd{identical}\hlstd{(num, sum_x)}
+\end{alltt}
+\begin{verbatim}
+## [1] FALSE
+\end{verbatim}
+\begin{alltt}
+\hlstd{sum_x} \hlcom{# 0 dp of accuracy}
+\end{alltt}
+\begin{verbatim}
+## [1] 1
+\end{verbatim}
+\begin{alltt}
+\hlstd{y} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlkwd{rep}\hlstd{(}\hlnum{1e-16}\hlstd{,} \hlnum{10000}\hlstd{),} \hlnum{1}\hlstd{)}
+\hlstd{sum_y} \hlkwb{<-} \hlnum{0}
+\hlkwa{for} \hlstd{(i} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{(}\hlkwd{length}\hlstd{(y)))}
+  \hlstd{sum_y} \hlkwb{<-} \hlstd{sum_y} \hlopt{+} \hlstd{y[i]}
+\hlkwd{identical}\hlstd{(num, sum_y)}
+\end{alltt}
+\begin{verbatim}
+## [1] TRUE
+\end{verbatim}
+\begin{alltt}
+\hlstd{sum_y} \hlcom{# 16 dp of accuracy, right answer}
+\end{alltt}
+\begin{verbatim}
+## [1] 1.0000000000010000889
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+# In Python
+import numpy as np
+import decimal
+num = 1.000000000001
+x = np.array([1e-16]*(10001))
+x[0] = 1
+print(np.equal(num, sum(x)))
+print(decimal.Decimal(sum(x))) # 0 dp of accuracy
+
+print(np.equal(num, np.sum(x)))
+print(decimal.Decimal(np.sum(x))) # 0 dp of accuracy
+
+sum_x = 0
+for x_select in x:
+  sum_x += x_select
+print(np.equal(num, sum_x))
+print(decimal.Decimal(sum_x)) # 0 dp of accuracy
+
+y = np.array([1e-16]*(10001))
+y[len(y)-1] = 1
+sum_y = 0
+for y_select in y:
+  sum_y += y_select
+print(np.equal(num, sum_y))
+print(decimal.Decimal(sum_y)) # 16 dp of accuracy, right answer
+\end{alltt}
+
+\begin{verbatim}
+## False
+## 1
+## False
+## 1
+## False
+## 1
+## True
+## 1.0000000000010000889005823410116136074066162109375
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+(e) It suggests that R's \texttt{sum()} function does not simply sum from left to right, but either sums the numbers of higher precision first before the 
+
+(f) The \texttt{sum} function in R calls a sum function written in C. The C source code is available at: \url{https://github.com/wch/r-source/blob/trunk/src/main/summary.c}. In C, the \texttt{do\_summary} function calls \texttt{rsum} to carry out summation of doubles.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# Code for sum()}
+\hlstd{sum}
+\end{alltt}
+\begin{verbatim}
+## function (..., na.rm = FALSE)  .Primitive("sum")
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+\end{document}

@@ -1,0 +1,110 @@
+\documentclass{article}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+% Add hyperlinks
+\usepackage{hyperref}
+
+\title{STAT 243: Problem Set 5}
+\author{Jin Rou New [jrnew]}
+\date{\today}
+
+%% begin.rcode setup, include=FALSE
+% opts_chunk$set(fig.path='figure/latex-', cache.path='cache/latex-')
+%% end.rcode
+
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+There was an overflow, since the result is smaller than the smallest number that can be represented, i.e. $e^{-1022}$. They should instead calculate the log likelihood by taking the sum of the logarithms of the probabilities.
+
+%% begin.rcode q1, cache=TRUE
+options(digits = 10)
+load("ps5prob1.Rda")
+p <- c(1/(1 + exp(-X %*% beta)))
+likelihood <- prod(dbinom(y, n, p)) # Value of 0 obtained
+likelihood
+
+log_likelihood <- sum(log(dbinom(y, n, p)))
+log_likelihood
+
+%% end.rcode
+
+We can then calculate the likelihood by hand as either $e^{\rinline{log_likelihood}}$ or $10^{\rinline{log_likelihood}}/ln(10) = 10^{\rinline{log_likelihood}}/\rinline{log(10)}$.
+
+%================================================================================
+\section{Problem 2}
+(a) We can expect 16 decimal places of accuracy at most for our result.
+
+%% begin.rcode q2a, cache=TRUE
+options(digits = 20)
+num <- 1.000000000001
+num
+%% end.rcode
+
+(b), (c) and (d)
+No, \texttt{sum()} does not give the right accuracy, but only up to 15 decimal places. In Python, it gives 0 decimal places whether I use the base \texttt{sum()} or from np. In both R and Python, using a \texttt{for} loop to do the summation with 1 as the first value in the vector do not give the right answer, but only a result with 0 decimal places of accuracy. With 1 as the last value in the vector, the right answer with 16 decimal places of accuracy is obtained.
+
+%% begin.rcode q2r, cache=TRUE
+# In R
+options(digits = 20)
+x <- c(1, rep(1e-16, 10000))
+identical(num, sum(x))
+sum(x) # 15 dp of accuracy
+
+sum_x <- 0
+for (i in 1:(length(x)))
+  sum_x <- sum_x + x[i]
+identical(num, sum_x)
+sum_x # 0 dp of accuracy
+
+y <- c(rep(1e-16, 10000), 1)
+sum_y <- 0
+for (i in 1:(length(y)))
+  sum_y <- sum_y + y[i]
+identical(num, sum_y)
+sum_y # 16 dp of accuracy, right answer
+%% end.rcode
+
+%% begin.rcode q2python, engine='python', cache=TRUE
+# In Python
+import numpy as np
+import decimal
+num = 1.000000000001
+x = np.array([1e-16]*(10001))
+x[0] = 1
+print(np.equal(num, sum(x)))
+print(decimal.Decimal(sum(x))) # 0 dp of accuracy
+
+print(np.equal(num, np.sum(x)))
+print(decimal.Decimal(np.sum(x))) # 0 dp of accuracy
+
+sum_x = 0
+for x_select in x:
+  sum_x += x_select
+print(np.equal(num, sum_x))
+print(decimal.Decimal(sum_x)) # 0 dp of accuracy
+
+y = np.array([1e-16]*(10001))
+y[len(y)-1] = 1
+sum_y = 0
+for y_select in y:
+  sum_y += y_select
+print(np.equal(num, sum_y))
+print(decimal.Decimal(sum_y)) # 16 dp of accuracy, right answer
+%% end.rcode
+
+(e) It suggests that R's \texttt{sum()} function does not simply sum from left to right, but either sums the numbers of higher precision first before the 
+
+(f) The \texttt{sum} function in R calls a sum function written in C. The C source code is available at: \url{https://github.com/wch/r-source/blob/trunk/src/main/summary.c}. In C, the \texttt{do\_summary} function calls \texttt{rsum} to carry out summation of doubles.
+
+%% begin.rcode q2f, cache=TRUE
+# Code for sum()
+sum
+%% end.rcode
+\end{document}
