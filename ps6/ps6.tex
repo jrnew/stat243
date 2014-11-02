@@ -109,7 +109,7 @@ The database file is 9.56 Gb, smaller than the original CSV (12 Gb) but much lar
 %================================================================================
 \section{Problem 2}
 (a) and (b) 
-Results are displayed below. Oddly, subsetting is faster for ff but calculating the mean by group is faster for SQLite. Calculating the median by group too 484s for ff, but could not be done for SQLite because the required \texttt{RSQLite.extfuns} package is not available for \texttt{R 3.0.2} on the server. Code for doing the same on Spark is given below, even though I could not get it to run without strange errors on the server.
+Results are displayed below. Both subsetting and calculating the mean by group are faster for SQLite. Calculating the median by group took 2067s for ff, but could not be done for SQLite because the required \texttt{RSQLite.extfuns} package is not available for \texttt{R 3.0.2} on the server. Code for doing the same on Spark is given below, even though I could not get it to run without strange errors on the server, so no comparison for this was possible, though I would think it is faster than either SQLite or ff.
 
 \begin{verbatim}
 # ff
@@ -329,9 +329,7 @@ print "%f " %  time.time()
 \end{kframe}
 \end{knitrout}
 %----------------------------------------------------------------------
-(d) I first extracted a list of unique airports before doing a \texttt{foreach} loop over the airports.
-
-I added an index on the departure airport using \texttt{create index} before rerunning the code from parts (a) and (b). Results are shown below. Parallelisation vastly improves the speed of the operation.
+(d) I first extracted a list of unique airports before doing a \texttt{foreach} loop over the airports. Results are shown below. Parallelisation vastly improves the speed of the operation.
 
 \begin{verbatim}
 user  system elapsed 
@@ -480,6 +478,5 @@ date +"%s" >> procdata/unix-systime.txt
 \end{alltt}
 \end{kframe}
 \end{knitrout}
-
 
 \end{document}
