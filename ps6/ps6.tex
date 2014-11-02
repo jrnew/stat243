@@ -1,0 +1,485 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+% Add hyperlinks
+\usepackage{hyperref}
+
+\title{STAT 243: Problem Set 6}
+\author{Jin Rou New [jrnew]}
+\date{\today}
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+The database file is 9.56 Gb, smaller than the original CSV (12 Gb) but much larger than the bzipped copy (1.2Gb) and the .ffData binary representation (1.3 Gb).
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(RSQLite)}
+\hlstd{data_dir} \hlkwb{<-} \hlstr{"data"}
+\hlstd{procdata_dir} \hlkwb{<-} \hlstr{"procdata"}
+\hlstd{years} \hlkwb{<-} \hlnum{1987}\hlopt{:}\hlnum{2008}
+
+\hlcom{# Download all bz2 files}
+\hlkwa{for} \hlstd{(year} \hlkwa{in} \hlstd{years) \{}
+  \hlstd{data_filepath} \hlkwb{<-} \hlkwd{paste0}\hlstd{(year,}\hlstr{".csv.bz2"}\hlstd{)}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{file.exists}\hlstd{(}\hlkwd{file.path}\hlstd{(data_dir, data_filepath)))}
+    \hlkwd{download.file}\hlstd{(}\hlkwd{paste0}\hlstd{(}\hlstr{"http://www.stat.berkeley.edu/share/paciorek/"}\hlstd{, data_filepath),}
+                  \hlkwd{file.path}\hlstd{(data_dir, data_filepath))}
+\hlstd{\}}
+
+\hlcom{# Read in bz2 files, convert NA values and write out to SQL database }
+\hlstd{db} \hlkwb{<-} \hlkwd{dbConnect}\hlstd{(}\hlkwd{SQLite}\hlstd{(),} \hlkwc{dbname} \hlstd{=} \hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights.db"}\hlstd{))}
+\hlstd{col_classes} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"integer"}\hlstd{,} \hlkwd{rep}\hlstd{(}\hlstr{"factor"}\hlstd{,} \hlnum{3}\hlstd{),} \hlkwd{rep}\hlstd{(}\hlstr{"integer"}\hlstd{,} \hlnum{4}\hlstd{),}
+                 \hlstr{"factor"}\hlstd{,} \hlstr{"integer"}\hlstd{,} \hlstr{"factor"}\hlstd{,} \hlkwd{rep}\hlstd{(}\hlstr{"integer"}\hlstd{,} \hlnum{5}\hlstd{),} \hlkwd{rep}\hlstd{(}\hlstr{"factor"}\hlstd{,} \hlnum{2}\hlstd{),}
+                 \hlkwd{rep}\hlstd{(}\hlstr{"integer"}\hlstd{,} \hlnum{4}\hlstd{),} \hlstr{"factor"}\hlstd{,} \hlkwd{rep}\hlstd{(}\hlstr{"integer"}\hlstd{,} \hlnum{6}\hlstd{))}
+\hlkwa{for} \hlstd{(year} \hlkwa{in} \hlstd{years) \{}
+  \hlstd{is_first_file} \hlkwb{<-} \hlstd{year} \hlopt{==} \hlstd{years[}\hlnum{1}\hlstd{]}
+  \hlstd{data_filepath} \hlkwb{<-} \hlkwd{paste0}\hlstd{(year,}\hlstr{".csv.bz2"}\hlstd{)}
+  \hlstd{con} \hlkwb{<-} \hlkwd{bzfile}\hlstd{(}\hlkwd{file.path}\hlstd{(data_dir, data_filepath),} \hlstr{"rt"}\hlstd{)}
+  \hlstd{data} \hlkwb{<-} \hlkwd{read.csv}\hlstd{(con,} \hlkwc{header} \hlstd{=} \hlnum{TRUE}\hlstd{,} \hlkwc{colClasses} \hlstd{= col_classes)}
+  \hlstd{data}\hlopt{$}\hlstd{DepDelay[}\hlkwd{is.na}\hlstd{(data}\hlopt{$}\hlstd{DepDelay)]} \hlkwb{<-} \hlopt{-}\hlnum{9999}
+  \hlkwd{dbWriteTable}\hlstd{(}\hlkwc{conn} \hlstd{= db,} \hlkwc{name} \hlstd{=} \hlstr{"flights"}\hlstd{,} \hlkwc{value} \hlstd{= data,}
+               \hlkwc{row.names} \hlstd{=} \hlnum{FALSE}\hlstd{,} \hlkwc{append} \hlstd{=} \hlopt{!}\hlstd{is_first_file)}
+\hlstd{\}}
+\hlkwd{dbDisconnect}\hlstd{(db)}
+\hlkwd{closeAllConnections}\hlstd{()}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\section{Problem 2}
+(a) and (b) 
+Results are displayed below. Oddly, subsetting is faster for ff but calculating the mean by group is faster for SQLite. Calculating the median by group too 484s for ff, but could not be done for SQLite because the required \texttt{RSQLite.extfuns} package is not available for \texttt{R 3.0.2} on the server. Code for doing the same on Spark is given below, even though I could not get it to run without strange errors on the server.
+
+\begin{verbatim}
+# ff
+# Subset
+  user  system elapsed 
+32.162   5.796  81.773 
+# Mean
+   user   system  elapsed 
+488.909  293.738 2892.788 
+# Median
+   user   system  elapsed 
+484.602  239.916 2067.493 
+
+# SQLite
+# Subset
+  user  system elapsed 
+52.644   7.408  60.304 
+# Mean
+   user  system elapsed 
+222.101  28.813 258.769 
+\end{verbatim}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+# With Spark
+import numpy as np
+import time
+from operator import add
+lines = sc.textFile("/data/airline").repartition(96)
+
+def subset(line):
+  vals = line.split(',')
+  return(vals[0] != 'Year' and vals[15] != 'NA' and
+  float(vals[15]) >= -30 and float(vals[15]) <= 720)
+
+# Subset flights data
+lines_filtered = lines.filter(subset).collect()
+lines_filtered.take(5) # Check
+
+# Extract flights departing from SFO or OAK
+print "%f " %  time.time()
+lines_bayarea = lines_filtered.filter(lambda line: any(airport in line.split(',')[16] 
+  for airport in ('SFO', 'OAK')))
+lines_bayarea.take(5)
+print "%f " %  time.time()
+
+# Find mean/median departure delay by airport
+print "%f " %  time.time()
+def depdelay(line):
+  vals = line.split(',')
+  if vals[0] == 'Year':
+    return('0', 0)
+  else:
+    return(vals[16], float(vals[15]))
+  
+def getmean(input):
+  if len(input) == 2:
+    if len(input[1]) > 0:
+      m = np.mean(input[1])
+      return((input[0], m))
+    else:
+      return((input[0], -999))
+  else:
+    return((input[0], -9999))
+  
+def getmedian(input):
+  if len(input) == 2:
+    if len(input[1]) > 0:
+      m = np.median(input[1])
+      return((input[0], m))
+    else:
+      return((input[0], -999))
+  else:
+    return((input[0], -9999))
+  
+lines_depdelay = lines.map(lines_depdelay)
+depdelay_mean = lines_depdelay.groupByKey().map(getmean).collect()
+depdelay_median = lines_depdelay.groupByKey().map(getmedian).collect()
+print "%f " %  time.time()
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(RSQLite.extfuns)}
+\hlcom{# With SQLite}
+\hlstd{db} \hlkwb{<-} \hlkwd{dbConnect}\hlstd{(}\hlkwd{SQLite}\hlstd{(),} \hlkwc{dbname} \hlstd{=} \hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights.db"}\hlstd{))}
+
+\hlcom{# Subset flights data}
+\hlkwa{if} \hlstd{(}\hlopt{!}\hlstd{(}\hlstr{"flights_subset"} \hlopt{%in%} \hlkwd{dbListTables}\hlstd{(db))) \{}
+  \hlstd{viewquery} \hlkwb{<-} \hlkwd{paste0}\hlstd{(}\hlstr{"create view flights_subset as select * from "}\hlstd{,}
+                      \hlstr{"flights where DepDelay >= -30 and DepDelay <= 720"}\hlstd{)}
+  \hlkwd{dbGetQuery}\hlstd{(db, viewquery)}
+\hlstd{\}}
+
+\hlcom{# Extract flights departing from SFO or OAK}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{query1} \hlkwb{<-} \hlstr{"select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"}
+  \hlstd{flights_bayarea} \hlkwb{<-} \hlkwd{dbGetQuery}\hlstd{(db, query1)}
+\hlstd{\})}
+
+\hlcom{# Find mean/median departure delay by airport}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{query2} \hlkwb{<-} \hlstr{"select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"}
+  \hlstd{depdelay_mean} \hlkwb{<-} \hlkwd{dbGetQuery}\hlstd{(db, query2)}
+\hlstd{\})}
+
+\hlcom{# Notes: Requires RSQLite.extfuns which is not available for R 3.0.2 on AWS}
+\hlcom{# init_extensions(db)}
+\hlcom{# system.time(\{}
+\hlcom{#   query3 <- "select Origin, median(DepDelay) as medianDepDelay from flights_subset group by Origin"}
+\hlcom{#   depdelay_median <- dbGetQuery(db, query3)}
+\hlcom{# \})}
+
+\hlkwd{dbDisconnect}\hlstd{(db)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(ff)}
+\hlkwd{library}\hlstd{(ffbase)}
+\hlkwd{library}\hlstd{(doBy)}
+\hlkwd{library}\hlstd{(data.table)}
+
+\hlcom{# With ff}
+\hlcom{# Download all ff files}
+\hlstd{data_filepaths} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"AirlineDataAll.ffData"}\hlstd{,} \hlstr{"AirlineDataAll.RData"}\hlstd{)}
+\hlkwa{for} \hlstd{(data_filepath} \hlkwa{in} \hlstd{data_filepaths) \{}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{file.exists}\hlstd{(}\hlkwd{file.path}\hlstd{(data_dir, data_filepath)))}
+    \hlkwd{download.file}\hlstd{(}\hlkwd{paste0}\hlstd{(}\hlstr{"http://www.stat.berkeley.edu/share/paciorek/"}\hlstd{, data_filepath),}
+                  \hlkwd{file.path}\hlstd{(data_dir, data_filepath))}
+\hlstd{\}}
+\hlkwd{ffload}\hlstd{(}\hlkwd{file.path}\hlstd{(data_dir,} \hlstr{"AirlineDataAll"}\hlstd{),} \hlkwc{rootpath} \hlstd{=} \hlstr{"/mnt/airline"}\hlstd{)}
+
+\hlcom{# Subset flights data}
+\hlstd{select} \hlkwb{<-} \hlstd{dat}\hlopt{$}\hlstd{DepDelay} \hlopt{>= -}\hlnum{30} \hlopt{&} \hlstd{dat}\hlopt{$}\hlstd{DepDelay} \hlopt{<=} \hlnum{720} \hlopt{& !}\hlkwd{is.na}\hlstd{(dat}\hlopt{$}\hlstd{DepDelay)}
+\hlstd{indices_select} \hlkwb{<-} \hlkwd{ffwhich}\hlstd{(select, select} \hlopt{==} \hlnum{TRUE}\hlstd{)}
+\hlstd{dat_subset} \hlkwb{<-} \hlstd{dat[indices_select, ]}
+
+\hlcom{# Extract flights departing from SFO or OAK}
+\hlcom{# Note: is.element() and %in% do not work with ffvectors}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{select_bayarea} \hlkwb{<-} \hlstd{dat_subset}\hlopt{$}\hlstd{Origin} \hlopt{==} \hlstr{"SFO"} \hlopt{|} \hlstd{dat_subset}\hlopt{$}\hlstd{Origin} \hlopt{==} \hlstr{"OAK"}
+  \hlstd{indices_select_bayarea} \hlkwb{<-} \hlkwd{ffwhich}\hlstd{(select_bayarea, select_bayarea} \hlopt{==} \hlnum{TRUE}\hlstd{)}
+  \hlstd{flights_bayarea} \hlkwb{<-} \hlstd{dat_subset[indices_select_bayarea, ]}
+\hlstd{\})}
+
+\hlcom{# Find mean/median departure delay by airport}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{depdelay_mean} \hlkwb{<-} \hlkwd{ffdfdply}\hlstd{(}\hlkwc{x} \hlstd{= dat_subset,} \hlkwc{split} \hlstd{=} \hlkwd{as.character}\hlstd{(dat_subset}\hlopt{$}\hlstd{Origin),}
+                            \hlkwc{FUN} \hlstd{=} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{) \{}
+                              \hlstd{dt} \hlkwb{<-} \hlkwd{data.table}\hlstd{(x)}
+                              \hlstd{dt[,} \hlkwd{list}\hlstd{(}\hlkwc{meanDepDelay} \hlstd{=} \hlkwd{mean}\hlstd{(DepDelay)),} \hlkwc{by} \hlstd{= Origin]}
+                            \hlstd{\})}
+\hlstd{\})}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{depdelay_median} \hlkwb{<-} \hlkwd{ffdfdply}\hlstd{(}\hlkwc{x} \hlstd{= dat_subset,} \hlkwc{split} \hlstd{=} \hlkwd{as.character}\hlstd{(dat_subset}\hlopt{$}\hlstd{Origin),}
+                              \hlkwc{FUN} \hlstd{=} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{) \{}
+                                \hlstd{dt} \hlkwb{<-} \hlkwd{data.table}\hlstd{(x)}
+                                \hlcom{# Note: Need to convert to double else error }
+                                \hlcom{# when an integer is returned}
+                                \hlstd{dt[,} \hlkwd{list}\hlstd{(}\hlkwc{medianDepDelay} \hlstd{=} \hlkwd{as.double}\hlstd{(}\hlkwd{median}\hlstd{(DepDelay))),}
+                                  \hlkwc{by} \hlstd{= Origin]}
+                              \hlstd{\})}
+\hlstd{\})}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%----------------------------------------------------------------------
+(c) I added an index on the departure airport using \texttt{create index} before rerunning the code from parts (a) and (b). Results are shown below. Adding the index clearly improves speed.
+
+\begin{verbatim}
+# SQLite
+# Subset
+  user  system elapsed 
+14.317   1.659  30.918 
+# Mean
+   user  system elapsed 
+138.967  33.410 314.509
+\end{verbatim}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# Add index to Origin}
+\hlkwa{if} \hlstd{(}\hlopt{!}\hlkwd{file.exists}\hlstd{(}\hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights-indexed.db"}\hlstd{)))}
+  \hlkwd{file.copy}\hlstd{(}\hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights.db"}\hlstd{),} \hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights-indexed.db"}\hlstd{))}
+\hlstd{db_indexed} \hlkwb{<-} \hlkwd{dbConnect}\hlstd{(}\hlkwd{SQLite}\hlstd{(),} \hlkwc{dbname} \hlstd{=} \hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights-indexed.db"}\hlstd{))}
+\hlstd{indexquery} \hlkwb{<-} \hlstr{"create index OriginID on flights(Origin)"}
+\hlkwd{dbGetQuery}\hlstd{(db_indexed, indexquery)}
+
+\hlkwa{if} \hlstd{(}\hlopt{!}\hlstd{(}\hlstr{"flights_subset"} \hlopt{%in%} \hlkwd{dbListTables}\hlstd{(db_indexed))) \{}
+  \hlcom{# Subset flights data}
+  \hlstd{viewquery} \hlkwb{<-} \hlkwd{paste0}\hlstd{(}\hlstr{"create view flights_subset as select * from "}\hlstd{,}
+                      \hlstr{"flights where DepDelay >= -30 and DepDelay <= 720"}\hlstd{)}
+  \hlkwd{dbGetQuery}\hlstd{(db_indexed, viewquery)}
+\hlstd{\}}
+
+\hlcom{# Extract flights departing from SFO or OAK}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{query1} \hlkwb{<-} \hlstr{"select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"}
+  \hlstd{flights_bayarea2} \hlkwb{<-} \hlkwd{dbGetQuery}\hlstd{(db_indexed, query1)}
+\hlstd{\})}
+
+\hlcom{# Find mean/median departure delay by airport}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{query2} \hlkwb{<-} \hlstr{"select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"}
+  \hlstd{depdelay_mean2} \hlkwb{<-} \hlkwd{dbGetQuery}\hlstd{(db_indexed, query2)}
+\hlstd{\})}
+\hlkwd{dbDisconnect}\hlstd{(db_indexed)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%----------------------------------------------------------------------
+(d) I first extracted a list of unique airports before doing a \texttt{foreach} loop over the airports.
+
+I added an index on the departure airport using \texttt{create index} before rerunning the code from parts (a) and (b). Results are shown below. Parallelisation vastly improves the speed of the operation.
+
+\begin{verbatim}
+user  system elapsed 
+148.439  30.706  86.888 
+\end{verbatim}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(foreach)}
+\hlkwd{library}\hlstd{(doParallel)}
+\hlkwd{library}\hlstd{(iterators)}
+\hlcom{# Find mean departure delay by airport (in parallel)}
+\hlstd{db} \hlkwb{<-} \hlkwd{dbConnect}\hlstd{(}\hlkwd{SQLite}\hlstd{(),} \hlkwc{dbname} \hlstd{=} \hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights-indexed.db"}\hlstd{))}
+\hlstd{num_cores} \hlkwb{<-} \hlnum{4}
+\hlkwd{registerDoParallel}\hlstd{(num_cores)}
+\hlstd{query} \hlkwb{<-} \hlstr{"select Origin from flights_subset"}
+\hlstd{airports} \hlkwb{<-} \hlkwd{unique}\hlstd{(}\hlkwd{dbGetQuery}\hlstd{(db, query)[[}\hlnum{1}\hlstd{]])}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{depdelay_mean3} \hlkwb{<-} \hlkwd{foreach}\hlstd{(}\hlkwc{airport} \hlstd{= airports,} \hlkwc{.combine} \hlstd{= rbind)} \hlopt{%dopar%} \hlstd{\{}
+    \hlstd{db} \hlkwb{<-} \hlkwd{dbConnect}\hlstd{(}\hlkwd{SQLite}\hlstd{(),} \hlkwc{dbname} \hlstd{=} \hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights.db"}\hlstd{))}
+    \hlstd{query} \hlkwb{<-} \hlkwd{paste0}\hlstd{(}\hlstr{"select Origin, avg(DepDelay) as meanDepDelay "}\hlstd{,}
+                    \hlstr{"from flights_subset where Origin = '"}\hlstd{, airport ,}\hlstr{"'"}\hlstd{)}
+    \hlstd{mean_temp} \hlkwb{<-} \hlkwd{dbGetQuery}\hlstd{(db, query)}
+  \hlstd{\}}
+\hlstd{\})}
+\hlkwd{dbDisconnect}\hlstd{(db)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%======================================================================
+\section{Problem 3}
+(a) Results are shown below.
+
+\begin{verbatim}
+   user  system elapsed 
+614.633  36.145 720.723
+\end{verbatim}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# With SQLite}
+\hlstd{db} \hlkwb{<-} \hlkwd{dbConnect}\hlstd{(}\hlkwd{SQLite}\hlstd{(),} \hlkwc{dbname} \hlstd{=} \hlkwd{file.path}\hlstd{(procdata_dir,} \hlstr{"flights.db"}\hlstd{))}
+\hlcom{# Extract the 20 observations with the longest departure delays }
+\hlcom{# from airports with at least 1 million flights}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{viewquery} \hlkwb{<-} \hlkwd{paste}\hlstd{(}\hlstr{"create view num_departing_flights as select Origin,"}\hlstd{,}
+                     \hlstr{"count(Origin) as NumDepartures from flights group by Origin"}\hlstd{)}
+  \hlkwd{dbGetQuery}\hlstd{(db, viewquery)}
+  \hlstd{joinquery} \hlkwb{<-} \hlkwd{paste0}\hlstd{(}\hlstr{"create view flights_all as select * from flights_subset "}\hlstd{,}
+                      \hlstr{"join num_departing_flights on flights_subset.Origin = "}\hlstd{,}
+                      \hlstr{"num_departing_flights.Origin"}\hlstd{)}
+  \hlkwd{dbGetQuery}\hlstd{(db, joinquery)}
+  \hlstd{searchquery} \hlkwb{<-} \hlkwd{paste0}\hlstd{(}\hlstr{"select * from flights_all2 where NumDepartures >= 1000000 "}\hlstd{,}
+                        \hlstr{"order by DepDelay desc limit 20"}\hlstd{)}
+  \hlstd{dep_delays_longest} \hlkwb{<-} \hlkwd{dbGetQuery}\hlstd{(db, searchquery)}
+\hlstd{\})}
+\hlkwd{dbDisconnect}\hlstd{(db)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%----------------------------------------------------------------------
+(b) To avoid sorting large tables, I obtained a permutation vector of the sorted (in descending order) departure delay vector and collected the indices of that vector with ranks 1 to 20 (for 20 longest departure delays), then used the 20 indices to extract the relevant observation
+
+Note: Code could not run on full data set on server, despite running successfully on a subset locally and on the server, so results on speed of operations are not available.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# With ff}
+\hlkwd{ffload}\hlstd{(}\hlkwd{file.path}\hlstd{(data_dir,} \hlstr{"AirlineDataAll"}\hlstd{),} \hlkwc{rootpath} \hlstd{=} \hlstr{"/mnt/airline"}\hlstd{)}
+
+\hlcom{# Subset flights data}
+\hlstd{select} \hlkwb{<-} \hlstd{dat}\hlopt{$}\hlstd{DepDelay} \hlopt{>= -}\hlnum{30} \hlopt{&} \hlstd{dat}\hlopt{$}\hlstd{DepDelay} \hlopt{<=} \hlnum{720} \hlopt{& !}\hlkwd{is.na}\hlstd{(dat}\hlopt{$}\hlstd{DepDelay)}
+\hlstd{indices_select} \hlkwb{<-} \hlkwd{ffwhich}\hlstd{(select, select} \hlopt{==} \hlnum{TRUE}\hlstd{)}
+\hlstd{dat_subset} \hlkwb{<-} \hlstd{dat[indices_select, ]}
+
+\hlcom{# Extract the 20 observations with the longest departure delays }
+\hlcom{# from airports with at least 1 million flights}
+\hlkwd{system.time}\hlstd{(\{}
+  \hlstd{num_departing_flights} \hlkwb{<-} \hlkwd{ffdfdply}\hlstd{(}\hlkwc{x} \hlstd{= dat,} \hlkwc{split} \hlstd{=} \hlkwd{as.character}\hlstd{(dat}\hlopt{$}\hlstd{Origin),}
+                                    \hlkwc{FUN} \hlstd{=} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{)}
+                                      \hlkwd{summaryBy}\hlstd{(Origin} \hlopt{~} \hlstd{Origin,} \hlkwc{data} \hlstd{= x,}
+                                                \hlkwc{FUN} \hlstd{= sum,} \hlkwc{keep.names} \hlstd{=} \hlnum{FALSE}\hlstd{))}
+  \hlstd{dat_merged} \hlkwb{<-} \hlkwd{merge}\hlstd{(dat_subset, num_departing_flights,} \hlkwc{by} \hlstd{=} \hlstr{"Origin"}\hlstd{)}
+  \hlstd{select_num_departures} \hlkwb{<-} \hlstd{dat_merged}\hlopt{$}\hlstd{Origin.sum} \hlopt{>} \hlnum{1000000}
+  \hlstd{indices_select_num_departures} \hlkwb{<-} \hlkwd{ffwhich}\hlstd{(select_num_departures,}
+                                           \hlstd{select_num_departures} \hlopt{==} \hlnum{TRUE}\hlstd{)}
+  \hlstd{dat_merged_subset} \hlkwb{<-} \hlstd{dat_merged[indices_select_num_departures, ]}
+  \hlstd{select_top20} \hlkwb{<-} \hlkwd{fforder}\hlstd{(dat_merged_subset}\hlopt{$}\hlstd{DepDelay,} \hlkwc{decreasing} \hlstd{=} \hlnum{TRUE}\hlstd{)} \hlopt{<=} \hlnum{20}
+  \hlstd{indices_top20} \hlkwb{<-} \hlkwd{ffwhich}\hlstd{(select_top20, select_top20} \hlopt{==} \hlnum{TRUE}\hlstd{)}
+  \hlstd{dat_top20} \hlkwb{<-} \hlstd{dat_merged_subset[indices_top20, ]}
+  \hlstd{dat_top20} \hlkwb{<-} \hlstd{dat_top20[}\hlkwd{order}\hlstd{(dat_top20}\hlopt{$}\hlstd{DepDelay,} \hlkwc{decreasing} \hlstd{=} \hlnum{TRUE}\hlstd{), ]}
+\hlstd{\})}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%----------------------------------------------------------------------
+(c) To avoid sorting large tables, I extracted a subset of the table with departure delays of more than 700 min before sorting the resulting smaller table.
+
+Note: Code could not run on pyspark, so results on speed of operations are not available.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+# With Spark
+num_departing_flights = lines_filtered.map(count).reduceByKey(add).collect()
+lines_merged = lines_filtered.join(num_departing_flights).collect()
+
+# Extract the 20 observations with the longest departure delays from
+# airports with at least 1 million flights
+def getlongestdelays(line):
+  vals = line.split(',')
+return(int(vals[29]) > 100000 and float(vals[15]) > 700)
+
+lines_delays_temp = lines_filtered.filter(getlongestdelays)
+lines_longest_delays = lines_delays_temp.sortByKey(ascending = False, 
+                                                   keyfunc = lambda line: float(line.split(',')[15])).take(20)
+print "%f " %  time.time()
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%======================================================================
+\section{Problem 4}
+The operation took 529s, slower than both SQLite and ff.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+files_bz=$(ls data | grep bz2)
+for file_bz in $files_bz
+do
+bzip2 -dk data/$file_bz
+done
+
+echo "Start: " > procdata/unix-systime.txt
+date +"%s" >> procdata/unix-systime.txt
+files=$(ls data | grep csv)
+for file in $files
+do
+cat data/$file | egrep ",(SFO|OAK),[[:alpha:]]"
+done
+echo "End: " >> procdata/unix-systime.txt
+date +"%s" >> procdata/unix-systime.txt
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\end{document}

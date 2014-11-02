@@ -1,0 +1,1988 @@
+
+R version 3.0.2 (2013-09-25) -- "Frisbee Sailing"
+Copyright (C) 2013 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> rm(list = ls())
+> # setwd("~/Copy/Berkeley/stat243/ps6")
+> library(RSQLite)
+Loading required package: DBI
+> # library(RSQLite.extfuns)
+> library(ff)
+Loading required package: bit
+Attaching package bit
+package:bit (c) 2008-2012 Jens Oehlschlaegel (GPL-2)
+creators: bit bitwhich
+coercion: as.logical as.integer as.bit as.bitwhich which
+operator: ! & | xor != ==
+querying: print length any all min max range sum summary
+bit access: length<- [ [<- [[ [[<-
+for more help type ?bit
+
+Attaching package: ‘bit’
+
+The following object is masked from ‘package:base’:
+
+    xor
+
+Attaching package ff
+- getOption("fftempdir")=="/mnt/airline/RtmpcgHdEn"
+
+- getOption("ffextension")=="ff"
+
+- getOption("ffdrop")==TRUE
+
+- getOption("fffinonexit")==TRUE
+
+- getOption("ffpagesize")==65536
+
+- getOption("ffcaching")=="mmnoflush"  -- consider "ffeachflush" if your system stalls on large writes
+
+- getOption("ffbatchbytes")==16777216 -- consider a different value for tuning your system
+
+- getOption("ffmaxbytes")==536870912 -- consider a different value for tuning your system
+
+
+Attaching package: ‘ff’
+
+The following objects are masked from ‘package:bit’:
+
+    clone, clone.default, clone.list
+
+The following objects are masked from ‘package:utils’:
+
+    write.csv, write.csv2
+
+The following objects are masked from ‘package:base’:
+
+    is.factor, is.ordered
+
+> library(ffbase)
+
+Attaching package: ‘ffbase’
+
+The following objects are masked from ‘package:ff’:
+
+    [<-.ff, [.ff
+
+The following objects are masked from ‘package:base’:
+
+    %in%, table
+
+> library(foreach)
+> library(doParallel)
+Loading required package: iterators
+Loading required package: parallel
+> library(iterators)
+> library(doBy)
+Loading required package: survival
+Loading required package: splines
+Loading required package: MASS
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following object is masked from ‘package:bit’:
+
+    setattr
+
+> #----------------------------------------------------------------------
+> get_notifications <- TRUE
+> if (get_notifications) {
++   library(RPushbullet)
++   options(error = function() { # Be notified when there is an error
++     pbPost(type = "note", 
++            title = "Error!", 
++            body = geterrmessage(),
++            recipients = c(1, 2))
++   })
++ }
+Attaching RPushbullet version 0.1.0.
+Reading ~/.rpushbullet.json
+> #----------------------------------------------------------------------
+> data_dir <- "data"
+> procdata_dir <- "procdata"
+> dir.create(data_dir, showWarnings = FALSE)
+> dir.create(procdata_dir, showWarnings = FALSE)
+> years <- 1987:2008
+> if (FALSE) {
++ #======================================================================
++ # Question 1
++ # Download all bz2 files
++ for (year in years) {
++   data_filepath <- paste0(year,".csv.bz2")
++   if (!file.exists(file.path(data_dir, data_filepath)))
++     download.file(paste0("http://www.stat.berkeley.edu/share/paciorek/", data_filepath),
++                   file.path(data_dir, data_filepath))
++ }
++ if (!file.exists(file.path(procdata_dir, "flights.db"))) {
++   db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++   col_classes <- c("integer", rep("factor", 3), rep("integer", 4), 
++                    "factor", "integer", "factor", rep("integer", 5), rep("factor", 2),
++                    rep("integer", 4), "factor", rep("integer", 6))
++   for (year in years) {
++     is_first_file <- year == years[1]
++     data_filepath <- paste0(year,".csv.bz2")
++     con <- bzfile(file.path(data_dir, data_filepath), "rt")
++     data <- read.csv(con, header = TRUE, colClasses = col_classes)
++     data$DepDelay[is.na(data$DepDelay)] <- -9999
++     dbWriteTable(conn = db, name = "flights", value = data,
++                  row.names = FALSE, append = !is_first_file)
++   }
++   dbDisconnect(db)
++   closeAllConnections()
++ }
++ #======================================================================
++ # Question 2
++ # (a) and (b) with SQLite
++ db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++ 
++ # Subset flights data
++ if (!("flights_subset" %in% dbListTables(db))) {
++   viewquery <- "create view flights_subset as select * from flights where DepDelay >= -30 and DepDelay <= 720"
++   dbGetQuery(db, viewquery)
++ }
++ 
++ # Extract flights departing from SFO or OAK
++ system.time({
++   query1 <- "select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"
++   flights_bayarea <- dbGetQuery(db, query1)
++ })
++ 
++ # Find mean/median departure delay by airport
++ system.time({
++   query2 <- "select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"
++   depdelay_mean <- dbGetQuery(db, query2)
++ })
++ 
++ # Notes: Requires RSQLite.extfuns which is not available for R 3.0.2 on AWS
++ # init_extensions(db)
++ # system.time({
++ #   query3 <- "select Origin, median(DepDelay) as medianDepDelay from flights_subset group by Origin"
++ #   depdelay_median <- dbGetQuery(db, query3)
++ # })
++ 
++ if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2a/b for SQLite done!"),
++          recipients = c(1, 2))
++ }
++ 
++ # Check that flights were correctly extracted and means/medians calculated
++ unique(flights_bayarea$Origin)
++ head(depdelay_mean)
++ # head(depdelay_median)
++ dbDisconnect(db)
++ #----------------------------------------------------------------------
++ # (c)
++ # Add index to Origin
++ if (!file.exists(file.path(procdata_dir, "flights-indexed.db")))
++   file.copy(file.path(procdata_dir, "flights.db"), file.path(procdata_dir, "flights-indexed.db"))
++ db_indexed <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights-indexed.db"))
++ indexquery <- "create index OriginID on flights(Origin)"
++ try(dbGetQuery(db_indexed, indexquery)) # Ad-hoc
++ 
++ if (!("flights_subset" %in% dbListTables(db_indexed))) {
++   # Subset flights data
++   viewquery <- "create view flights_subset as select * from flights where DepDelay >= -30 and DepDelay <= 720"
++   dbGetQuery(db_indexed, viewquery)
++ }
++ 
++ # Extract flights departing from SFO or OAK
++ system.time({
++   query1 <- "select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"
++   flights_bayarea2 <- dbGetQuery(db_indexed, query1)
++ })
++ 
++ # Find mean/median departure delay by airport
++ system.time({
++   query2 <- "select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"
++   depdelay_mean2 <- dbGetQuery(db_indexed, query2)
++ })
++ 
++ # init_extensions(db_indexed)
++ # system.time({
++ #   query3 <- "select Origin, median(DepDelay) as medianDepDelay from flights_subset group by Origin"
++ #   depdelay_median2 <- dbGetQuery(db_indexed, query3)
++ # })
++ 
++ if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2c for SQLite done!"),
++          recipients = c(1, 2))
++ }
++ 
++ # Check that flights were correctly extracted and means/medians calculated
++ unique(flights_bayarea2$Origin)
++ head(depdelay_mean2)
++ # head(depdelay_median)
++ dbDisconnect(db_indexed)
++ #----------------------------------------------------------------------
++ # (d)
++ # Find mean departure delay by airport (in parallel)
++ db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights-indexed.db"))
++ num_cores <- 4
++ registerDoParallel(num_cores)
++ query <- "select Origin from flights_subset"
++ airports <- unique(dbGetQuery(db, query)[[1]])
++ system.time({
++   depdelay_mean3 <- foreach(airport = airports, .combine = rbind) %dopar% {
++     db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++     query <- paste0("select Origin, avg(DepDelay) as meanDepDelay ",
++                     "from flights_subset where Origin = '", airport ,"'")
++     mean_temp <- dbGetQuery(db, query)
++   }
++ })
++ 
++ if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2d for SQLite done!"),
++          recipients = c(1, 2))
++ }
++ 
++ # Check that flights were correctly extracted and means/medians calculated
++ head(depdelay_mean3)
++ #----------------------------------------------------------------------
++ # Question 3
++ # (a) SQLite
++ db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++ # Extract the 20 observations with the longest departure delays 
++ # from airports with at least 1 million flights
++ system.time({
++   viewquery <- paste("create view num_departing_flights as select Origin,",
++                      "count(Origin) as NumDepartures from flights group by Origin")
++   dbGetQuery(db, viewquery)
++   joinquery <- paste("create view flights_all as select * from flights_subset",
++                      "join num_departing_flights on flights_subset.Origin = num_departing_flights.Origin")
++   dbGetQuery(db, joinquery)
++   searchquery <- "select * from flights_all2 where NumDepartures >= 1000000 order by DepDelay desc limit 20 "
++   dep_delays_longest <- dbGetQuery(db, searchquery)
++ })
++ 
++ if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 3 for SQLite done!"),
++          recipients = c(1, 2))
++ }
++ 
++ # Check that observations were extracted correctly
++ print(dep_delays_longest)
++ dbDisconnect(db)
++ }
+> #----------------------------------------------------------------------
+> #----------------------------------------------------------------------
+> # Question 2
+> # (a) and (b) with ff
+> # Download all ff files
+> # data_filepaths <- c("AirlineDataAll.ffData", "AirlineDataAll.RData")
+> # for (data_filepath in data_filepaths) {
+> #   if (!file.exists(file.path(data_dir, data_filepath)))
+> #     download.file(paste0("http://www.stat.berkeley.edu/share/paciorek/", data_filepath),
+> #                   file.path(data_dir, data_filepath))
+> # }
+> ffload(file.path(data_dir, "AirlineDataAll"), rootpath = "/mnt/airline")
+ [1] "tmp/RtmpU5Uw6z/ffdf4e684aecd7c4.ff" "tmp/RtmpU5Uw6z/ffdf4e687fb73a88.ff"
+ [3] "tmp/RtmpU5Uw6z/ffdf4e6862b1033f.ff" "tmp/RtmpU5Uw6z/ffdf4e6820053932.ff"
+ [5] "tmp/RtmpU5Uw6z/ffdf4e681e7d2235.ff" "tmp/RtmpU5Uw6z/ffdf4e686aa01c8.ff" 
+ [7] "tmp/RtmpU5Uw6z/ffdf4e6829316931.ff" "tmp/RtmpU5Uw6z/ffdf4e6857ad931e.ff"
+ [9] "tmp/RtmpU5Uw6z/ffdf4e686bade869.ff" "tmp/RtmpU5Uw6z/ffdf4e682bd3dfd1.ff"
+[11] "tmp/RtmpU5Uw6z/ffdf4e68371c2afa.ff" "tmp/RtmpU5Uw6z/ffdf4e6852a6f8c9.ff"
+[13] "tmp/RtmpU5Uw6z/ffdf4e685c89591d.ff" "tmp/RtmpU5Uw6z/ffdf4e682780692.ff" 
+[15] "tmp/RtmpU5Uw6z/ffdf4e684d1cc9df.ff" "tmp/RtmpU5Uw6z/ffdf4e682d8cd893.ff"
+[17] "tmp/RtmpU5Uw6z/ffdf4e6859caeda9.ff" "tmp/RtmpU5Uw6z/ffdf4e681c4fde5f.ff"
+[19] "tmp/RtmpU5Uw6z/ffdf4e68264d0b86.ff" "tmp/RtmpU5Uw6z/ffdf4e68e9b07f4.ff" 
+[21] "tmp/RtmpU5Uw6z/ffdf4e68358283ef.ff" "tmp/RtmpU5Uw6z/ffdf4e68718ce4c3.ff"
+[23] "tmp/RtmpU5Uw6z/ffdf4e6814fa5981.ff" "tmp/RtmpU5Uw6z/ffdf4e6856883d5d.ff"
+[25] "tmp/RtmpU5Uw6z/ffdf4e687a077481.ff" "tmp/RtmpU5Uw6z/ffdf4e684469a1f3.ff"
+[27] "tmp/RtmpU5Uw6z/ffdf4e685eedc1e5.ff" "tmp/RtmpU5Uw6z/ffdf4e6814973178.ff"
+[29] "tmp/RtmpU5Uw6z/ffdf4e683d69fd12.ff"
+> 
+> # Subset flights data
+> select <- dat$DepDelay >= -30 & dat$DepDelay <= 720 & !is.na(dat$DepDelay)
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e682d8cd893.ff
+> indices_select <- ffwhich(select, select == TRUE)
+> dat_subset <- dat[indices_select, ]
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e684aecd7c4.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e687fb73a88.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6862b1033f.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6820053932.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e681e7d2235.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e686aa01c8.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6829316931.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6857ad931e.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e686bade869.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e682bd3dfd1.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e68371c2afa.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6852a6f8c9.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e685c89591d.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e682780692.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e684d1cc9df.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6859caeda9.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e681c4fde5f.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e68264d0b86.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e68e9b07f4.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e68358283ef.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e68718ce4c3.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6814fa5981.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6856883d5d.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e687a077481.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e684469a1f3.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e685eedc1e5.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e6814973178.ff
+opening ff /mnt/airline/tmp/RtmpU5Uw6z/ffdf4e683d69fd12.ff
+> 
+> # Extract flights departing from SFO or OAK
+> # Note: is.element() and %in% do not work with ffvectors
+> system.time({
++   select_bayarea <- dat_subset$Origin == "SFO" | dat_subset$Origin == "OAK"
++   indices_select_bayarea <- ffwhich(select_bayarea, select_bayarea == TRUE)
++   flights_bayarea <- dat_subset[indices_select_bayarea, ]
++ })
+   user  system elapsed 
+ 32.162   5.796  81.773 
+> 
+> # Find mean/median departure delay by airport
+> system.time({
++   depdelay_mean <- ffdfdply(x = dat_subset, split = as.character(dat_subset$Origin),
++                             FUN = function(x) {                             
++                               dt <- data.table(x)
++                               dt[, list(meanDepDelay = mean(DepDelay)), by = Origin]
++                             })
++ })
+2014-10-31 22:50:08, calculating split sizes
+2014-10-31 22:50:15, building up split locations
+2014-10-31 22:53:23, working on split 1/164, extracting data in RAM of 1 split elements, totalling, 0.691 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 22:54:19, ... applying FUN to selected data
+2014-10-31 22:54:21, ... appending result to the output ffdf
+2014-10-31 22:54:21, working on split 2/164, extracting data in RAM of 1 split elements, totalling, 0.64746 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 22:55:15, ... applying FUN to selected data
+2014-10-31 22:55:16, ... appending result to the output ffdf
+2014-10-31 22:55:16, working on split 3/164, extracting data in RAM of 1 split elements, totalling, 0.60566 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 22:56:09, ... applying FUN to selected data
+2014-10-31 22:56:09, ... appending result to the output ffdf
+2014-10-31 22:56:09, working on split 4/164, extracting data in RAM of 1 split elements, totalling, 0.43411 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 22:56:58, ... applying FUN to selected data
+2014-10-31 22:56:58, ... appending result to the output ffdf
+2014-10-31 22:56:58, working on split 5/164, extracting data in RAM of 1 split elements, totalling, 0.37288 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 22:57:45, ... applying FUN to selected data
+2014-10-31 22:57:45, ... appending result to the output ffdf
+2014-10-31 22:57:45, working on split 6/164, extracting data in RAM of 1 split elements, totalling, 0.35361 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 22:58:33, ... applying FUN to selected data
+2014-10-31 22:58:34, ... appending result to the output ffdf
+2014-10-31 22:58:34, working on split 7/164, extracting data in RAM of 1 split elements, totalling, 0.31454 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 22:59:20, ... applying FUN to selected data
+2014-10-31 22:59:21, ... appending result to the output ffdf
+2014-10-31 22:59:21, working on split 8/164, extracting data in RAM of 1 split elements, totalling, 0.30812 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:00:09, ... applying FUN to selected data
+2014-10-31 23:00:09, ... appending result to the output ffdf
+2014-10-31 23:00:09, working on split 9/164, extracting data in RAM of 1 split elements, totalling, 0.29154 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:00:58, ... applying FUN to selected data
+2014-10-31 23:00:58, ... appending result to the output ffdf
+2014-10-31 23:00:58, working on split 10/164, extracting data in RAM of 1 split elements, totalling, 0.28939 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:01:47, ... applying FUN to selected data
+2014-10-31 23:01:48, ... appending result to the output ffdf
+2014-10-31 23:01:48, working on split 11/164, extracting data in RAM of 1 split elements, totalling, 0.28736 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:02:37, ... applying FUN to selected data
+2014-10-31 23:02:38, ... appending result to the output ffdf
+2014-10-31 23:02:38, working on split 12/164, extracting data in RAM of 1 split elements, totalling, 0.28367 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:03:25, ... applying FUN to selected data
+2014-10-31 23:03:26, ... appending result to the output ffdf
+2014-10-31 23:03:26, working on split 13/164, extracting data in RAM of 1 split elements, totalling, 0.28155 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:04:13, ... applying FUN to selected data
+2014-10-31 23:04:14, ... appending result to the output ffdf
+2014-10-31 23:04:14, working on split 14/164, extracting data in RAM of 1 split elements, totalling, 0.27029 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:05:01, ... applying FUN to selected data
+2014-10-31 23:05:02, ... appending result to the output ffdf
+2014-10-31 23:05:02, working on split 15/164, extracting data in RAM of 1 split elements, totalling, 0.23908 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:05:48, ... applying FUN to selected data
+2014-10-31 23:05:49, ... appending result to the output ffdf
+2014-10-31 23:05:49, working on split 16/164, extracting data in RAM of 1 split elements, totalling, 0.23893 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:06:37, ... applying FUN to selected data
+2014-10-31 23:06:38, ... appending result to the output ffdf
+2014-10-31 23:06:38, working on split 17/164, extracting data in RAM of 1 split elements, totalling, 0.22784 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:07:26, ... applying FUN to selected data
+2014-10-31 23:07:26, ... appending result to the output ffdf
+2014-10-31 23:07:26, working on split 18/164, extracting data in RAM of 1 split elements, totalling, 0.21967 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:08:15, ... applying FUN to selected data
+2014-10-31 23:08:15, ... appending result to the output ffdf
+2014-10-31 23:08:15, working on split 19/164, extracting data in RAM of 1 split elements, totalling, 0.21414 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:09:06, ... applying FUN to selected data
+2014-10-31 23:09:07, ... appending result to the output ffdf
+2014-10-31 23:09:07, working on split 20/164, extracting data in RAM of 1 split elements, totalling, 0.21141 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:09:57, ... applying FUN to selected data
+2014-10-31 23:09:58, ... appending result to the output ffdf
+2014-10-31 23:09:58, working on split 21/164, extracting data in RAM of 1 split elements, totalling, 0.21026 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:10:49, ... applying FUN to selected data
+2014-10-31 23:10:49, ... appending result to the output ffdf
+2014-10-31 23:10:49, working on split 22/164, extracting data in RAM of 1 split elements, totalling, 0.20372 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:11:37, ... applying FUN to selected data
+2014-10-31 23:11:38, ... appending result to the output ffdf
+2014-10-31 23:11:38, working on split 23/164, extracting data in RAM of 1 split elements, totalling, 0.1917 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:12:28, ... applying FUN to selected data
+2014-10-31 23:12:28, ... appending result to the output ffdf
+2014-10-31 23:12:28, working on split 24/164, extracting data in RAM of 1 split elements, totalling, 0.18274 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:13:17, ... applying FUN to selected data
+2014-10-31 23:13:17, ... appending result to the output ffdf
+2014-10-31 23:13:17, working on split 25/164, extracting data in RAM of 1 split elements, totalling, 0.16499 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:14:07, ... applying FUN to selected data
+2014-10-31 23:14:07, ... appending result to the output ffdf
+2014-10-31 23:14:07, working on split 26/164, extracting data in RAM of 1 split elements, totalling, 0.15414 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:14:57, ... applying FUN to selected data
+2014-10-31 23:14:57, ... appending result to the output ffdf
+2014-10-31 23:14:57, working on split 27/164, extracting data in RAM of 1 split elements, totalling, 0.15043 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:15:49, ... applying FUN to selected data
+2014-10-31 23:15:49, ... appending result to the output ffdf
+2014-10-31 23:15:49, working on split 28/164, extracting data in RAM of 1 split elements, totalling, 0.14125 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:16:39, ... applying FUN to selected data
+2014-10-31 23:16:40, ... appending result to the output ffdf
+2014-10-31 23:16:40, working on split 29/164, extracting data in RAM of 1 split elements, totalling, 0.14082 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:17:31, ... applying FUN to selected data
+2014-10-31 23:17:31, ... appending result to the output ffdf
+2014-10-31 23:17:31, working on split 30/164, extracting data in RAM of 1 split elements, totalling, 0.14039 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:18:23, ... applying FUN to selected data
+2014-10-31 23:18:23, ... appending result to the output ffdf
+2014-10-31 23:18:23, working on split 31/164, extracting data in RAM of 1 split elements, totalling, 0.12821 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:19:13, ... applying FUN to selected data
+2014-10-31 23:19:14, ... appending result to the output ffdf
+2014-10-31 23:19:14, working on split 32/164, extracting data in RAM of 1 split elements, totalling, 0.12793 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:20:02, ... applying FUN to selected data
+2014-10-31 23:20:02, ... appending result to the output ffdf
+2014-10-31 23:20:02, working on split 33/164, extracting data in RAM of 1 split elements, totalling, 0.12556 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:20:54, ... applying FUN to selected data
+2014-10-31 23:20:54, ... appending result to the output ffdf
+2014-10-31 23:20:54, working on split 34/164, extracting data in RAM of 1 split elements, totalling, 0.12526 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:21:45, ... applying FUN to selected data
+2014-10-31 23:21:45, ... appending result to the output ffdf
+2014-10-31 23:21:45, working on split 35/164, extracting data in RAM of 1 split elements, totalling, 0.12451 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:22:31, ... applying FUN to selected data
+2014-10-31 23:22:31, ... appending result to the output ffdf
+2014-10-31 23:22:31, working on split 36/164, extracting data in RAM of 1 split elements, totalling, 0.12395 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:23:24, ... applying FUN to selected data
+2014-10-31 23:23:25, ... appending result to the output ffdf
+2014-10-31 23:23:25, working on split 37/164, extracting data in RAM of 1 split elements, totalling, 0.11815 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:24:16, ... applying FUN to selected data
+2014-10-31 23:24:17, ... appending result to the output ffdf
+2014-10-31 23:24:17, working on split 38/164, extracting data in RAM of 1 split elements, totalling, 0.11259 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:25:09, ... applying FUN to selected data
+2014-10-31 23:25:09, ... appending result to the output ffdf
+2014-10-31 23:25:09, working on split 39/164, extracting data in RAM of 1 split elements, totalling, 0.10994 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:25:57, ... applying FUN to selected data
+2014-10-31 23:25:57, ... appending result to the output ffdf
+2014-10-31 23:25:57, working on split 40/164, extracting data in RAM of 1 split elements, totalling, 0.10819 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:26:39, ... applying FUN to selected data
+2014-10-31 23:26:39, ... appending result to the output ffdf
+2014-10-31 23:26:39, working on split 41/164, extracting data in RAM of 1 split elements, totalling, 0.10189 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:27:28, ... applying FUN to selected data
+2014-10-31 23:27:29, ... appending result to the output ffdf
+2014-10-31 23:27:29, working on split 42/164, extracting data in RAM of 1 split elements, totalling, 0.10088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:27:42, ... applying FUN to selected data
+2014-10-31 23:27:42, ... appending result to the output ffdf
+2014-10-31 23:27:42, working on split 43/164, extracting data in RAM of 1 split elements, totalling, 0.08772 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:28:35, ... applying FUN to selected data
+2014-10-31 23:28:35, ... appending result to the output ffdf
+2014-10-31 23:28:35, working on split 44/164, extracting data in RAM of 1 split elements, totalling, 0.08731 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:29:30, ... applying FUN to selected data
+2014-10-31 23:29:31, ... appending result to the output ffdf
+2014-10-31 23:29:31, working on split 45/164, extracting data in RAM of 1 split elements, totalling, 0.08706 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:30:00, ... applying FUN to selected data
+2014-10-31 23:30:01, ... appending result to the output ffdf
+2014-10-31 23:30:01, working on split 46/164, extracting data in RAM of 1 split elements, totalling, 0.08652 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:30:40, ... applying FUN to selected data
+2014-10-31 23:30:40, ... appending result to the output ffdf
+2014-10-31 23:30:40, working on split 47/164, extracting data in RAM of 1 split elements, totalling, 0.08565 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:31:03, ... applying FUN to selected data
+2014-10-31 23:31:03, ... appending result to the output ffdf
+2014-10-31 23:31:03, working on split 48/164, extracting data in RAM of 1 split elements, totalling, 0.0827 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:31:32, ... applying FUN to selected data
+2014-10-31 23:31:32, ... appending result to the output ffdf
+2014-10-31 23:31:32, working on split 49/164, extracting data in RAM of 1 split elements, totalling, 0.08147 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:31:45, ... applying FUN to selected data
+2014-10-31 23:31:45, ... appending result to the output ffdf
+2014-10-31 23:31:45, working on split 50/164, extracting data in RAM of 1 split elements, totalling, 0.08038 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:32:09, ... applying FUN to selected data
+2014-10-31 23:32:09, ... appending result to the output ffdf
+2014-10-31 23:32:09, working on split 51/164, extracting data in RAM of 1 split elements, totalling, 0.069 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:32:38, ... applying FUN to selected data
+2014-10-31 23:32:39, ... appending result to the output ffdf
+2014-10-31 23:32:39, working on split 52/164, extracting data in RAM of 1 split elements, totalling, 0.06191 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:32:45, ... applying FUN to selected data
+2014-10-31 23:32:45, ... appending result to the output ffdf
+2014-10-31 23:32:45, working on split 53/164, extracting data in RAM of 1 split elements, totalling, 0.05686 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:33:04, ... applying FUN to selected data
+2014-10-31 23:33:04, ... appending result to the output ffdf
+2014-10-31 23:33:04, working on split 54/164, extracting data in RAM of 1 split elements, totalling, 0.05551 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:33:18, ... applying FUN to selected data
+2014-10-31 23:33:18, ... appending result to the output ffdf
+2014-10-31 23:33:18, working on split 55/164, extracting data in RAM of 1 split elements, totalling, 0.05506 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:33:29, ... applying FUN to selected data
+2014-10-31 23:33:29, ... appending result to the output ffdf
+2014-10-31 23:33:29, working on split 56/164, extracting data in RAM of 1 split elements, totalling, 0.05473 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:33:44, ... applying FUN to selected data
+2014-10-31 23:33:44, ... appending result to the output ffdf
+2014-10-31 23:33:44, working on split 57/164, extracting data in RAM of 1 split elements, totalling, 0.05456 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:33:54, ... applying FUN to selected data
+2014-10-31 23:33:54, ... appending result to the output ffdf
+2014-10-31 23:33:54, working on split 58/164, extracting data in RAM of 1 split elements, totalling, 0.05167 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:34:11, ... applying FUN to selected data
+2014-10-31 23:34:11, ... appending result to the output ffdf
+2014-10-31 23:34:11, working on split 59/164, extracting data in RAM of 1 split elements, totalling, 0.05154 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:34:26, ... applying FUN to selected data
+2014-10-31 23:34:27, ... appending result to the output ffdf
+2014-10-31 23:34:27, working on split 60/164, extracting data in RAM of 1 split elements, totalling, 0.05018 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:34:38, ... applying FUN to selected data
+2014-10-31 23:34:38, ... appending result to the output ffdf
+2014-10-31 23:34:38, working on split 61/164, extracting data in RAM of 1 split elements, totalling, 0.04916 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:34:51, ... applying FUN to selected data
+2014-10-31 23:34:51, ... appending result to the output ffdf
+2014-10-31 23:34:51, working on split 62/164, extracting data in RAM of 1 split elements, totalling, 0.04915 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:34:59, ... applying FUN to selected data
+2014-10-31 23:35:00, ... appending result to the output ffdf
+2014-10-31 23:35:00, working on split 63/164, extracting data in RAM of 1 split elements, totalling, 0.04713 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:08, ... applying FUN to selected data
+2014-10-31 23:35:08, ... appending result to the output ffdf
+2014-10-31 23:35:08, working on split 64/164, extracting data in RAM of 1 split elements, totalling, 0.04695 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:15, ... applying FUN to selected data
+2014-10-31 23:35:15, ... appending result to the output ffdf
+2014-10-31 23:35:15, working on split 65/164, extracting data in RAM of 1 split elements, totalling, 0.04586 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:26, ... applying FUN to selected data
+2014-10-31 23:35:26, ... appending result to the output ffdf
+2014-10-31 23:35:26, working on split 66/164, extracting data in RAM of 1 split elements, totalling, 0.04428 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:32, ... applying FUN to selected data
+2014-10-31 23:35:32, ... appending result to the output ffdf
+2014-10-31 23:35:32, working on split 67/164, extracting data in RAM of 1 split elements, totalling, 0.0434 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:42, ... applying FUN to selected data
+2014-10-31 23:35:43, ... appending result to the output ffdf
+2014-10-31 23:35:43, working on split 68/164, extracting data in RAM of 1 split elements, totalling, 0.04335 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:49, ... applying FUN to selected data
+2014-10-31 23:35:49, ... appending result to the output ffdf
+2014-10-31 23:35:49, working on split 69/164, extracting data in RAM of 1 split elements, totalling, 0.04259 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:54, ... applying FUN to selected data
+2014-10-31 23:35:54, ... appending result to the output ffdf
+2014-10-31 23:35:54, working on split 70/164, extracting data in RAM of 1 split elements, totalling, 0.04165 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:35:58, ... applying FUN to selected data
+2014-10-31 23:35:58, ... appending result to the output ffdf
+2014-10-31 23:35:58, working on split 71/164, extracting data in RAM of 1 split elements, totalling, 0.04074 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:02, ... applying FUN to selected data
+2014-10-31 23:36:02, ... appending result to the output ffdf
+2014-10-31 23:36:02, working on split 72/164, extracting data in RAM of 1 split elements, totalling, 0.04029 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:07, ... applying FUN to selected data
+2014-10-31 23:36:07, ... appending result to the output ffdf
+2014-10-31 23:36:07, working on split 73/164, extracting data in RAM of 1 split elements, totalling, 0.03875 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:11, ... applying FUN to selected data
+2014-10-31 23:36:11, ... appending result to the output ffdf
+2014-10-31 23:36:11, working on split 74/164, extracting data in RAM of 1 split elements, totalling, 0.03777 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:14, ... applying FUN to selected data
+2014-10-31 23:36:14, ... appending result to the output ffdf
+2014-10-31 23:36:14, working on split 75/164, extracting data in RAM of 1 split elements, totalling, 0.03564 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:16, ... applying FUN to selected data
+2014-10-31 23:36:16, ... appending result to the output ffdf
+2014-10-31 23:36:16, working on split 76/164, extracting data in RAM of 1 split elements, totalling, 0.03514 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:20, ... applying FUN to selected data
+2014-10-31 23:36:20, ... appending result to the output ffdf
+2014-10-31 23:36:20, working on split 77/164, extracting data in RAM of 1 split elements, totalling, 0.03101 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:23, ... applying FUN to selected data
+2014-10-31 23:36:23, ... appending result to the output ffdf
+2014-10-31 23:36:23, working on split 78/164, extracting data in RAM of 1 split elements, totalling, 0.02839 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:27, ... applying FUN to selected data
+2014-10-31 23:36:27, ... appending result to the output ffdf
+2014-10-31 23:36:27, working on split 79/164, extracting data in RAM of 1 split elements, totalling, 0.02808 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:30, ... applying FUN to selected data
+2014-10-31 23:36:30, ... appending result to the output ffdf
+2014-10-31 23:36:30, working on split 80/164, extracting data in RAM of 1 split elements, totalling, 0.02554 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:32, ... applying FUN to selected data
+2014-10-31 23:36:32, ... appending result to the output ffdf
+2014-10-31 23:36:32, working on split 81/164, extracting data in RAM of 1 split elements, totalling, 0.02545 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:34, ... applying FUN to selected data
+2014-10-31 23:36:34, ... appending result to the output ffdf
+2014-10-31 23:36:34, working on split 82/164, extracting data in RAM of 1 split elements, totalling, 0.02544 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:36, ... applying FUN to selected data
+2014-10-31 23:36:36, ... appending result to the output ffdf
+2014-10-31 23:36:36, working on split 83/164, extracting data in RAM of 1 split elements, totalling, 0.02364 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:38, ... applying FUN to selected data
+2014-10-31 23:36:38, ... appending result to the output ffdf
+2014-10-31 23:36:38, working on split 84/164, extracting data in RAM of 1 split elements, totalling, 0.0235 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:40, ... applying FUN to selected data
+2014-10-31 23:36:40, ... appending result to the output ffdf
+2014-10-31 23:36:40, working on split 85/164, extracting data in RAM of 1 split elements, totalling, 0.02217 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:42, ... applying FUN to selected data
+2014-10-31 23:36:42, ... appending result to the output ffdf
+2014-10-31 23:36:42, working on split 86/164, extracting data in RAM of 1 split elements, totalling, 0.02116 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:45, ... applying FUN to selected data
+2014-10-31 23:36:45, ... appending result to the output ffdf
+2014-10-31 23:36:45, working on split 87/164, extracting data in RAM of 1 split elements, totalling, 0.02098 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:46, ... applying FUN to selected data
+2014-10-31 23:36:46, ... appending result to the output ffdf
+2014-10-31 23:36:46, working on split 88/164, extracting data in RAM of 1 split elements, totalling, 0.02022 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:48, ... applying FUN to selected data
+2014-10-31 23:36:48, ... appending result to the output ffdf
+2014-10-31 23:36:48, working on split 89/164, extracting data in RAM of 1 split elements, totalling, 0.01969 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:49, ... applying FUN to selected data
+2014-10-31 23:36:49, ... appending result to the output ffdf
+2014-10-31 23:36:49, working on split 90/164, extracting data in RAM of 1 split elements, totalling, 0.01847 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:51, ... applying FUN to selected data
+2014-10-31 23:36:51, ... appending result to the output ffdf
+2014-10-31 23:36:51, working on split 91/164, extracting data in RAM of 1 split elements, totalling, 0.01785 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:52, ... applying FUN to selected data
+2014-10-31 23:36:52, ... appending result to the output ffdf
+2014-10-31 23:36:52, working on split 92/164, extracting data in RAM of 1 split elements, totalling, 0.01768 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:53, ... applying FUN to selected data
+2014-10-31 23:36:53, ... appending result to the output ffdf
+2014-10-31 23:36:53, working on split 93/164, extracting data in RAM of 1 split elements, totalling, 0.01758 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:55, ... applying FUN to selected data
+2014-10-31 23:36:55, ... appending result to the output ffdf
+2014-10-31 23:36:55, working on split 94/164, extracting data in RAM of 1 split elements, totalling, 0.01757 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:56, ... applying FUN to selected data
+2014-10-31 23:36:56, ... appending result to the output ffdf
+2014-10-31 23:36:56, working on split 95/164, extracting data in RAM of 1 split elements, totalling, 0.0169 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:58, ... applying FUN to selected data
+2014-10-31 23:36:58, ... appending result to the output ffdf
+2014-10-31 23:36:58, working on split 96/164, extracting data in RAM of 1 split elements, totalling, 0.01679 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:36:59, ... applying FUN to selected data
+2014-10-31 23:36:59, ... appending result to the output ffdf
+2014-10-31 23:36:59, working on split 97/164, extracting data in RAM of 1 split elements, totalling, 0.01679 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:00, ... applying FUN to selected data
+2014-10-31 23:37:00, ... appending result to the output ffdf
+2014-10-31 23:37:00, working on split 98/164, extracting data in RAM of 1 split elements, totalling, 0.01673 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:01, ... applying FUN to selected data
+2014-10-31 23:37:01, ... appending result to the output ffdf
+2014-10-31 23:37:01, working on split 99/164, extracting data in RAM of 1 split elements, totalling, 0.01669 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:02, ... applying FUN to selected data
+2014-10-31 23:37:02, ... appending result to the output ffdf
+2014-10-31 23:37:02, working on split 100/164, extracting data in RAM of 1 split elements, totalling, 0.01652 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:04, ... applying FUN to selected data
+2014-10-31 23:37:04, ... appending result to the output ffdf
+2014-10-31 23:37:04, working on split 101/164, extracting data in RAM of 1 split elements, totalling, 0.01584 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:05, ... applying FUN to selected data
+2014-10-31 23:37:05, ... appending result to the output ffdf
+2014-10-31 23:37:05, working on split 102/164, extracting data in RAM of 1 split elements, totalling, 0.01564 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:07, ... applying FUN to selected data
+2014-10-31 23:37:07, ... appending result to the output ffdf
+2014-10-31 23:37:07, working on split 103/164, extracting data in RAM of 1 split elements, totalling, 0.01561 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:08, ... applying FUN to selected data
+2014-10-31 23:37:08, ... appending result to the output ffdf
+2014-10-31 23:37:08, working on split 104/164, extracting data in RAM of 1 split elements, totalling, 0.01456 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:09, ... applying FUN to selected data
+2014-10-31 23:37:10, ... appending result to the output ffdf
+2014-10-31 23:37:10, working on split 105/164, extracting data in RAM of 1 split elements, totalling, 0.01408 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:11, ... applying FUN to selected data
+2014-10-31 23:37:11, ... appending result to the output ffdf
+2014-10-31 23:37:11, working on split 106/164, extracting data in RAM of 1 split elements, totalling, 0.01382 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:12, ... applying FUN to selected data
+2014-10-31 23:37:12, ... appending result to the output ffdf
+2014-10-31 23:37:12, working on split 107/164, extracting data in RAM of 1 split elements, totalling, 0.01368 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:13, ... applying FUN to selected data
+2014-10-31 23:37:13, ... appending result to the output ffdf
+2014-10-31 23:37:13, working on split 108/164, extracting data in RAM of 1 split elements, totalling, 0.01347 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:14, ... applying FUN to selected data
+2014-10-31 23:37:14, ... appending result to the output ffdf
+2014-10-31 23:37:14, working on split 109/164, extracting data in RAM of 1 split elements, totalling, 0.01308 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:15, ... applying FUN to selected data
+2014-10-31 23:37:15, ... appending result to the output ffdf
+2014-10-31 23:37:15, working on split 110/164, extracting data in RAM of 1 split elements, totalling, 0.01287 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:16, ... applying FUN to selected data
+2014-10-31 23:37:16, ... appending result to the output ffdf
+2014-10-31 23:37:16, working on split 111/164, extracting data in RAM of 1 split elements, totalling, 0.01276 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:17, ... applying FUN to selected data
+2014-10-31 23:37:17, ... appending result to the output ffdf
+2014-10-31 23:37:17, working on split 112/164, extracting data in RAM of 1 split elements, totalling, 0.0127 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:17, ... applying FUN to selected data
+2014-10-31 23:37:17, ... appending result to the output ffdf
+2014-10-31 23:37:17, working on split 113/164, extracting data in RAM of 1 split elements, totalling, 0.01267 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:18, ... applying FUN to selected data
+2014-10-31 23:37:18, ... appending result to the output ffdf
+2014-10-31 23:37:18, working on split 114/164, extracting data in RAM of 1 split elements, totalling, 0.01236 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:19, ... applying FUN to selected data
+2014-10-31 23:37:19, ... appending result to the output ffdf
+2014-10-31 23:37:19, working on split 115/164, extracting data in RAM of 1 split elements, totalling, 0.01166 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:20, ... applying FUN to selected data
+2014-10-31 23:37:20, ... appending result to the output ffdf
+2014-10-31 23:37:20, working on split 116/164, extracting data in RAM of 1 split elements, totalling, 0.01088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:21, ... applying FUN to selected data
+2014-10-31 23:37:21, ... appending result to the output ffdf
+2014-10-31 23:37:21, working on split 117/164, extracting data in RAM of 1 split elements, totalling, 0.01087 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:22, ... applying FUN to selected data
+2014-10-31 23:37:22, ... appending result to the output ffdf
+2014-10-31 23:37:22, working on split 118/164, extracting data in RAM of 1 split elements, totalling, 0.01054 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:23, ... applying FUN to selected data
+2014-10-31 23:37:23, ... appending result to the output ffdf
+2014-10-31 23:37:23, working on split 119/164, extracting data in RAM of 1 split elements, totalling, 0.00985 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:24, ... applying FUN to selected data
+2014-10-31 23:37:24, ... appending result to the output ffdf
+2014-10-31 23:37:24, working on split 120/164, extracting data in RAM of 1 split elements, totalling, 0.00935 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:24, ... applying FUN to selected data
+2014-10-31 23:37:24, ... appending result to the output ffdf
+2014-10-31 23:37:25, working on split 121/164, extracting data in RAM of 1 split elements, totalling, 0.00924 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:25, ... applying FUN to selected data
+2014-10-31 23:37:25, ... appending result to the output ffdf
+2014-10-31 23:37:25, working on split 122/164, extracting data in RAM of 1 split elements, totalling, 0.00923 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:26, ... applying FUN to selected data
+2014-10-31 23:37:26, ... appending result to the output ffdf
+2014-10-31 23:37:26, working on split 123/164, extracting data in RAM of 1 split elements, totalling, 0.00912 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:27, ... applying FUN to selected data
+2014-10-31 23:37:27, ... appending result to the output ffdf
+2014-10-31 23:37:27, working on split 124/164, extracting data in RAM of 1 split elements, totalling, 0.0088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:28, ... applying FUN to selected data
+2014-10-31 23:37:28, ... appending result to the output ffdf
+2014-10-31 23:37:28, working on split 125/164, extracting data in RAM of 1 split elements, totalling, 0.0088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:29, ... applying FUN to selected data
+2014-10-31 23:37:29, ... appending result to the output ffdf
+2014-10-31 23:37:29, working on split 126/164, extracting data in RAM of 1 split elements, totalling, 0.00853 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:30, ... applying FUN to selected data
+2014-10-31 23:37:30, ... appending result to the output ffdf
+2014-10-31 23:37:30, working on split 127/164, extracting data in RAM of 1 split elements, totalling, 0.0083 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:30, ... applying FUN to selected data
+2014-10-31 23:37:30, ... appending result to the output ffdf
+2014-10-31 23:37:30, working on split 128/164, extracting data in RAM of 1 split elements, totalling, 0.00826 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:31, ... applying FUN to selected data
+2014-10-31 23:37:31, ... appending result to the output ffdf
+2014-10-31 23:37:31, working on split 129/164, extracting data in RAM of 1 split elements, totalling, 0.00808 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:32, ... applying FUN to selected data
+2014-10-31 23:37:32, ... appending result to the output ffdf
+2014-10-31 23:37:32, working on split 130/164, extracting data in RAM of 1 split elements, totalling, 0.00792 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:33, ... applying FUN to selected data
+2014-10-31 23:37:33, ... appending result to the output ffdf
+2014-10-31 23:37:33, working on split 131/164, extracting data in RAM of 2 split elements, totalling, 0.01561 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:34, ... applying FUN to selected data
+2014-10-31 23:37:34, ... appending result to the output ffdf
+2014-10-31 23:37:34, working on split 132/164, extracting data in RAM of 2 split elements, totalling, 0.01505 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:35, ... applying FUN to selected data
+2014-10-31 23:37:35, ... appending result to the output ffdf
+2014-10-31 23:37:35, working on split 133/164, extracting data in RAM of 2 split elements, totalling, 0.01456 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:36, ... applying FUN to selected data
+2014-10-31 23:37:36, ... appending result to the output ffdf
+2014-10-31 23:37:36, working on split 134/164, extracting data in RAM of 2 split elements, totalling, 0.01431 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:37, ... applying FUN to selected data
+2014-10-31 23:37:37, ... appending result to the output ffdf
+2014-10-31 23:37:37, working on split 135/164, extracting data in RAM of 2 split elements, totalling, 0.01405 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:38, ... applying FUN to selected data
+2014-10-31 23:37:38, ... appending result to the output ffdf
+2014-10-31 23:37:38, working on split 136/164, extracting data in RAM of 2 split elements, totalling, 0.01361 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:39, ... applying FUN to selected data
+2014-10-31 23:37:39, ... appending result to the output ffdf
+2014-10-31 23:37:39, working on split 137/164, extracting data in RAM of 2 split elements, totalling, 0.01311 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:40, ... applying FUN to selected data
+2014-10-31 23:37:40, ... appending result to the output ffdf
+2014-10-31 23:37:40, working on split 138/164, extracting data in RAM of 2 split elements, totalling, 0.01276 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:41, ... applying FUN to selected data
+2014-10-31 23:37:41, ... appending result to the output ffdf
+2014-10-31 23:37:41, working on split 139/164, extracting data in RAM of 2 split elements, totalling, 0.01241 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:42, ... applying FUN to selected data
+2014-10-31 23:37:42, ... appending result to the output ffdf
+2014-10-31 23:37:42, working on split 140/164, extracting data in RAM of 2 split elements, totalling, 0.0122 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:43, ... applying FUN to selected data
+2014-10-31 23:37:43, ... appending result to the output ffdf
+2014-10-31 23:37:43, working on split 141/164, extracting data in RAM of 2 split elements, totalling, 0.01207 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:44, ... applying FUN to selected data
+2014-10-31 23:37:44, ... appending result to the output ffdf
+2014-10-31 23:37:44, working on split 142/164, extracting data in RAM of 2 split elements, totalling, 0.0119 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:45, ... applying FUN to selected data
+2014-10-31 23:37:45, ... appending result to the output ffdf
+2014-10-31 23:37:45, working on split 143/164, extracting data in RAM of 2 split elements, totalling, 0.01164 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:46, ... applying FUN to selected data
+2014-10-31 23:37:46, ... appending result to the output ffdf
+2014-10-31 23:37:46, working on split 144/164, extracting data in RAM of 2 split elements, totalling, 0.01133 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:47, ... applying FUN to selected data
+2014-10-31 23:37:47, ... appending result to the output ffdf
+2014-10-31 23:37:47, working on split 145/164, extracting data in RAM of 2 split elements, totalling, 0.01108 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:48, ... applying FUN to selected data
+2014-10-31 23:37:48, ... appending result to the output ffdf
+2014-10-31 23:37:48, working on split 146/164, extracting data in RAM of 2 split elements, totalling, 0.01054 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:49, ... applying FUN to selected data
+2014-10-31 23:37:49, ... appending result to the output ffdf
+2014-10-31 23:37:49, working on split 147/164, extracting data in RAM of 3 split elements, totalling, 0.01533 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:50, ... applying FUN to selected data
+2014-10-31 23:37:50, ... appending result to the output ffdf
+2014-10-31 23:37:50, working on split 148/164, extracting data in RAM of 3 split elements, totalling, 0.01444 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:51, ... applying FUN to selected data
+2014-10-31 23:37:51, ... appending result to the output ffdf
+2014-10-31 23:37:51, working on split 149/164, extracting data in RAM of 3 split elements, totalling, 0.01369 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:52, ... applying FUN to selected data
+2014-10-31 23:37:52, ... appending result to the output ffdf
+2014-10-31 23:37:52, working on split 150/164, extracting data in RAM of 3 split elements, totalling, 0.01201 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:53, ... applying FUN to selected data
+2014-10-31 23:37:53, ... appending result to the output ffdf
+2014-10-31 23:37:53, working on split 151/164, extracting data in RAM of 4 split elements, totalling, 0.01508 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:54, ... applying FUN to selected data
+2014-10-31 23:37:54, ... appending result to the output ffdf
+2014-10-31 23:37:54, working on split 152/164, extracting data in RAM of 4 split elements, totalling, 0.01381 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:55, ... applying FUN to selected data
+2014-10-31 23:37:55, ... appending result to the output ffdf
+2014-10-31 23:37:55, working on split 153/164, extracting data in RAM of 5 split elements, totalling, 0.01489 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:56, ... applying FUN to selected data
+2014-10-31 23:37:56, ... appending result to the output ffdf
+2014-10-31 23:37:56, working on split 154/164, extracting data in RAM of 5 split elements, totalling, 0.01394 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:56, ... applying FUN to selected data
+2014-10-31 23:37:56, ... appending result to the output ffdf
+2014-10-31 23:37:56, working on split 155/164, extracting data in RAM of 6 split elements, totalling, 0.01509 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:58, ... applying FUN to selected data
+2014-10-31 23:37:58, ... appending result to the output ffdf
+2014-10-31 23:37:58, working on split 156/164, extracting data in RAM of 6 split elements, totalling, 0.01356 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:59, ... applying FUN to selected data
+2014-10-31 23:37:59, ... appending result to the output ffdf
+2014-10-31 23:37:59, working on split 157/164, extracting data in RAM of 7 split elements, totalling, 0.01466 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:37:59, ... applying FUN to selected data
+2014-10-31 23:38:00, ... appending result to the output ffdf
+2014-10-31 23:38:00, working on split 158/164, extracting data in RAM of 8 split elements, totalling, 0.01549 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:38:01, ... applying FUN to selected data
+2014-10-31 23:38:01, ... appending result to the output ffdf
+2014-10-31 23:38:01, working on split 159/164, extracting data in RAM of 8 split elements, totalling, 0.01424 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:38:01, ... applying FUN to selected data
+2014-10-31 23:38:01, ... appending result to the output ffdf
+2014-10-31 23:38:02, working on split 160/164, extracting data in RAM of 10 split elements, totalling, 0.01492 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:38:03, ... applying FUN to selected data
+2014-10-31 23:38:03, ... appending result to the output ffdf
+2014-10-31 23:38:03, working on split 161/164, extracting data in RAM of 13 split elements, totalling, 0.01556 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:38:03, ... applying FUN to selected data
+2014-10-31 23:38:03, ... appending result to the output ffdf
+2014-10-31 23:38:03, working on split 162/164, extracting data in RAM of 18 split elements, totalling, 0.01538 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:38:04, ... applying FUN to selected data
+2014-10-31 23:38:05, ... appending result to the output ffdf
+2014-10-31 23:38:05, working on split 163/164, extracting data in RAM of 34 split elements, totalling, 0.01558 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:38:06, ... applying FUN to selected data
+2014-10-31 23:38:06, ... appending result to the output ffdf
+2014-10-31 23:38:06, working on split 164/164, extracting data in RAM of 45 split elements, totalling, 0.00276 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:38:06, ... applying FUN to selected data
+2014-10-31 23:38:06, ... appending result to the output ffdf
+    user   system  elapsed 
+ 488.909  293.738 2892.788 
+Warning message:
+In ffdfdply(x = dat_subset, split = as.character(dat_subset$Origin),  :
+  single split does not fit into BATCHBYTES
+> system.time({
++   depdelay_median <- ffdfdply(x = dat_subset, split = as.character(dat_subset$Origin),
++                               FUN = function(x) {                             
++                                 dt <- data.table(x)
++                                 # Note: Need to convert to double else error when an integer is returned
++                                 dt[, list(medianDepDelay = as.double(median(DepDelay))), by = Origin]
++                               })
++ })
+2014-10-31 23:38:20, calculating split sizes
+2014-10-31 23:38:26, building up split locations
+2014-10-31 23:41:04, working on split 1/164, extracting data in RAM of 1 split elements, totalling, 0.691 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:41:44, ... applying FUN to selected data
+2014-10-31 23:41:46, ... appending result to the output ffdf
+2014-10-31 23:41:46, working on split 2/164, extracting data in RAM of 1 split elements, totalling, 0.64746 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:42:44, ... applying FUN to selected data
+2014-10-31 23:42:45, ... appending result to the output ffdf
+2014-10-31 23:42:45, working on split 3/164, extracting data in RAM of 1 split elements, totalling, 0.60566 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:43:48, ... applying FUN to selected data
+2014-10-31 23:43:49, ... appending result to the output ffdf
+2014-10-31 23:43:49, working on split 4/164, extracting data in RAM of 1 split elements, totalling, 0.43411 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:44:58, ... applying FUN to selected data
+2014-10-31 23:44:59, ... appending result to the output ffdf
+2014-10-31 23:44:59, working on split 5/164, extracting data in RAM of 1 split elements, totalling, 0.37288 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:46:07, ... applying FUN to selected data
+2014-10-31 23:46:07, ... appending result to the output ffdf
+2014-10-31 23:46:07, working on split 6/164, extracting data in RAM of 1 split elements, totalling, 0.35361 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:47:10, ... applying FUN to selected data
+2014-10-31 23:47:11, ... appending result to the output ffdf
+2014-10-31 23:47:11, working on split 7/164, extracting data in RAM of 1 split elements, totalling, 0.31454 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:48:18, ... applying FUN to selected data
+2014-10-31 23:48:18, ... appending result to the output ffdf
+2014-10-31 23:48:18, working on split 8/164, extracting data in RAM of 1 split elements, totalling, 0.30812 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:49:20, ... applying FUN to selected data
+2014-10-31 23:49:20, ... appending result to the output ffdf
+2014-10-31 23:49:20, working on split 9/164, extracting data in RAM of 1 split elements, totalling, 0.29154 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:50:20, ... applying FUN to selected data
+2014-10-31 23:50:21, ... appending result to the output ffdf
+2014-10-31 23:50:21, working on split 10/164, extracting data in RAM of 1 split elements, totalling, 0.28939 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:51:25, ... applying FUN to selected data
+2014-10-31 23:51:26, ... appending result to the output ffdf
+2014-10-31 23:51:26, working on split 11/164, extracting data in RAM of 1 split elements, totalling, 0.28736 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:52:31, ... applying FUN to selected data
+2014-10-31 23:52:32, ... appending result to the output ffdf
+2014-10-31 23:52:32, working on split 12/164, extracting data in RAM of 1 split elements, totalling, 0.28367 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:53:36, ... applying FUN to selected data
+2014-10-31 23:53:36, ... appending result to the output ffdf
+2014-10-31 23:53:36, working on split 13/164, extracting data in RAM of 1 split elements, totalling, 0.28155 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:54:44, ... applying FUN to selected data
+2014-10-31 23:54:45, ... appending result to the output ffdf
+2014-10-31 23:54:45, working on split 14/164, extracting data in RAM of 1 split elements, totalling, 0.27029 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:55:42, ... applying FUN to selected data
+2014-10-31 23:55:43, ... appending result to the output ffdf
+2014-10-31 23:55:43, working on split 15/164, extracting data in RAM of 1 split elements, totalling, 0.23908 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:56:46, ... applying FUN to selected data
+2014-10-31 23:56:47, ... appending result to the output ffdf
+2014-10-31 23:56:47, working on split 16/164, extracting data in RAM of 1 split elements, totalling, 0.23893 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:57:51, ... applying FUN to selected data
+2014-10-31 23:57:51, ... appending result to the output ffdf
+2014-10-31 23:57:51, working on split 17/164, extracting data in RAM of 1 split elements, totalling, 0.22784 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:58:58, ... applying FUN to selected data
+2014-10-31 23:58:58, ... appending result to the output ffdf
+2014-10-31 23:58:58, working on split 18/164, extracting data in RAM of 1 split elements, totalling, 0.21967 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 23:59:59, ... applying FUN to selected data
+2014-11-01 00:00:00, ... appending result to the output ffdf
+2014-11-01 00:00:00, working on split 19/164, extracting data in RAM of 1 split elements, totalling, 0.21414 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:00:58, ... applying FUN to selected data
+2014-11-01 00:00:58, ... appending result to the output ffdf
+2014-11-01 00:00:58, working on split 20/164, extracting data in RAM of 1 split elements, totalling, 0.21141 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:02:03, ... applying FUN to selected data
+2014-11-01 00:02:04, ... appending result to the output ffdf
+2014-11-01 00:02:04, working on split 21/164, extracting data in RAM of 1 split elements, totalling, 0.21026 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:03:12, ... applying FUN to selected data
+2014-11-01 00:03:13, ... appending result to the output ffdf
+2014-11-01 00:03:13, working on split 22/164, extracting data in RAM of 1 split elements, totalling, 0.20372 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:03:54, ... applying FUN to selected data
+2014-11-01 00:03:54, ... appending result to the output ffdf
+2014-11-01 00:03:54, working on split 23/164, extracting data in RAM of 1 split elements, totalling, 0.1917 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:04:21, ... applying FUN to selected data
+2014-11-01 00:04:21, ... appending result to the output ffdf
+2014-11-01 00:04:21, working on split 24/164, extracting data in RAM of 1 split elements, totalling, 0.18274 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:04:59, ... applying FUN to selected data
+2014-11-01 00:05:00, ... appending result to the output ffdf
+2014-11-01 00:05:00, working on split 25/164, extracting data in RAM of 1 split elements, totalling, 0.16499 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:05:27, ... applying FUN to selected data
+2014-11-01 00:05:28, ... appending result to the output ffdf
+2014-11-01 00:05:28, working on split 26/164, extracting data in RAM of 1 split elements, totalling, 0.15414 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:06:01, ... applying FUN to selected data
+2014-11-01 00:06:02, ... appending result to the output ffdf
+2014-11-01 00:06:02, working on split 27/164, extracting data in RAM of 1 split elements, totalling, 0.15043 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:06:29, ... applying FUN to selected data
+2014-11-01 00:06:30, ... appending result to the output ffdf
+2014-11-01 00:06:30, working on split 28/164, extracting data in RAM of 1 split elements, totalling, 0.14125 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:07:02, ... applying FUN to selected data
+2014-11-01 00:07:03, ... appending result to the output ffdf
+2014-11-01 00:07:03, working on split 29/164, extracting data in RAM of 1 split elements, totalling, 0.14082 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:07:13, ... applying FUN to selected data
+2014-11-01 00:07:13, ... appending result to the output ffdf
+2014-11-01 00:07:13, working on split 30/164, extracting data in RAM of 1 split elements, totalling, 0.14039 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:07:19, ... applying FUN to selected data
+2014-11-01 00:07:20, ... appending result to the output ffdf
+2014-11-01 00:07:20, working on split 31/164, extracting data in RAM of 1 split elements, totalling, 0.12821 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:07:28, ... applying FUN to selected data
+2014-11-01 00:07:29, ... appending result to the output ffdf
+2014-11-01 00:07:29, working on split 32/164, extracting data in RAM of 1 split elements, totalling, 0.12793 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:07:39, ... applying FUN to selected data
+2014-11-01 00:07:40, ... appending result to the output ffdf
+2014-11-01 00:07:40, working on split 33/164, extracting data in RAM of 1 split elements, totalling, 0.12556 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:07:55, ... applying FUN to selected data
+2014-11-01 00:07:55, ... appending result to the output ffdf
+2014-11-01 00:07:55, working on split 34/164, extracting data in RAM of 1 split elements, totalling, 0.12526 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:15, ... applying FUN to selected data
+2014-11-01 00:08:15, ... appending result to the output ffdf
+2014-11-01 00:08:15, working on split 35/164, extracting data in RAM of 1 split elements, totalling, 0.12451 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:20, ... applying FUN to selected data
+2014-11-01 00:08:21, ... appending result to the output ffdf
+2014-11-01 00:08:21, working on split 36/164, extracting data in RAM of 1 split elements, totalling, 0.12395 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:28, ... applying FUN to selected data
+2014-11-01 00:08:29, ... appending result to the output ffdf
+2014-11-01 00:08:29, working on split 37/164, extracting data in RAM of 1 split elements, totalling, 0.11815 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:35, ... applying FUN to selected data
+2014-11-01 00:08:35, ... appending result to the output ffdf
+2014-11-01 00:08:35, working on split 38/164, extracting data in RAM of 1 split elements, totalling, 0.11259 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:40, ... applying FUN to selected data
+2014-11-01 00:08:40, ... appending result to the output ffdf
+2014-11-01 00:08:40, working on split 39/164, extracting data in RAM of 1 split elements, totalling, 0.10994 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:46, ... applying FUN to selected data
+2014-11-01 00:08:47, ... appending result to the output ffdf
+2014-11-01 00:08:47, working on split 40/164, extracting data in RAM of 1 split elements, totalling, 0.10819 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:51, ... applying FUN to selected data
+2014-11-01 00:08:52, ... appending result to the output ffdf
+2014-11-01 00:08:52, working on split 41/164, extracting data in RAM of 1 split elements, totalling, 0.10189 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:08:57, ... applying FUN to selected data
+2014-11-01 00:08:57, ... appending result to the output ffdf
+2014-11-01 00:08:57, working on split 42/164, extracting data in RAM of 1 split elements, totalling, 0.10088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:01, ... applying FUN to selected data
+2014-11-01 00:09:01, ... appending result to the output ffdf
+2014-11-01 00:09:01, working on split 43/164, extracting data in RAM of 1 split elements, totalling, 0.08772 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:07, ... applying FUN to selected data
+2014-11-01 00:09:07, ... appending result to the output ffdf
+2014-11-01 00:09:07, working on split 44/164, extracting data in RAM of 1 split elements, totalling, 0.08731 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:12, ... applying FUN to selected data
+2014-11-01 00:09:13, ... appending result to the output ffdf
+2014-11-01 00:09:13, working on split 45/164, extracting data in RAM of 1 split elements, totalling, 0.08706 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:17, ... applying FUN to selected data
+2014-11-01 00:09:17, ... appending result to the output ffdf
+2014-11-01 00:09:17, working on split 46/164, extracting data in RAM of 1 split elements, totalling, 0.08652 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:21, ... applying FUN to selected data
+2014-11-01 00:09:21, ... appending result to the output ffdf
+2014-11-01 00:09:21, working on split 47/164, extracting data in RAM of 1 split elements, totalling, 0.08565 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:25, ... applying FUN to selected data
+2014-11-01 00:09:25, ... appending result to the output ffdf
+2014-11-01 00:09:25, working on split 48/164, extracting data in RAM of 1 split elements, totalling, 0.0827 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:28, ... applying FUN to selected data
+2014-11-01 00:09:28, ... appending result to the output ffdf
+2014-11-01 00:09:28, working on split 49/164, extracting data in RAM of 1 split elements, totalling, 0.08147 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:32, ... applying FUN to selected data
+2014-11-01 00:09:32, ... appending result to the output ffdf
+2014-11-01 00:09:32, working on split 50/164, extracting data in RAM of 1 split elements, totalling, 0.08038 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:35, ... applying FUN to selected data
+2014-11-01 00:09:36, ... appending result to the output ffdf
+2014-11-01 00:09:36, working on split 51/164, extracting data in RAM of 1 split elements, totalling, 0.069 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:40, ... applying FUN to selected data
+2014-11-01 00:09:40, ... appending result to the output ffdf
+2014-11-01 00:09:40, working on split 52/164, extracting data in RAM of 1 split elements, totalling, 0.06191 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:43, ... applying FUN to selected data
+2014-11-01 00:09:43, ... appending result to the output ffdf
+2014-11-01 00:09:43, working on split 53/164, extracting data in RAM of 1 split elements, totalling, 0.05686 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:47, ... applying FUN to selected data
+2014-11-01 00:09:47, ... appending result to the output ffdf
+2014-11-01 00:09:47, working on split 54/164, extracting data in RAM of 1 split elements, totalling, 0.05551 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:49, ... applying FUN to selected data
+2014-11-01 00:09:50, ... appending result to the output ffdf
+2014-11-01 00:09:50, working on split 55/164, extracting data in RAM of 1 split elements, totalling, 0.05506 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:53, ... applying FUN to selected data
+2014-11-01 00:09:53, ... appending result to the output ffdf
+2014-11-01 00:09:53, working on split 56/164, extracting data in RAM of 1 split elements, totalling, 0.05473 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:57, ... applying FUN to selected data
+2014-11-01 00:09:57, ... appending result to the output ffdf
+2014-11-01 00:09:57, working on split 57/164, extracting data in RAM of 1 split elements, totalling, 0.05456 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:09:59, ... applying FUN to selected data
+2014-11-01 00:09:59, ... appending result to the output ffdf
+2014-11-01 00:09:59, working on split 58/164, extracting data in RAM of 1 split elements, totalling, 0.05167 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:02, ... applying FUN to selected data
+2014-11-01 00:10:03, ... appending result to the output ffdf
+2014-11-01 00:10:03, working on split 59/164, extracting data in RAM of 1 split elements, totalling, 0.05154 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:06, ... applying FUN to selected data
+2014-11-01 00:10:06, ... appending result to the output ffdf
+2014-11-01 00:10:06, working on split 60/164, extracting data in RAM of 1 split elements, totalling, 0.05018 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:11, ... applying FUN to selected data
+2014-11-01 00:10:11, ... appending result to the output ffdf
+2014-11-01 00:10:11, working on split 61/164, extracting data in RAM of 1 split elements, totalling, 0.04916 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:13, ... applying FUN to selected data
+2014-11-01 00:10:13, ... appending result to the output ffdf
+2014-11-01 00:10:13, working on split 62/164, extracting data in RAM of 1 split elements, totalling, 0.04915 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:17, ... applying FUN to selected data
+2014-11-01 00:10:17, ... appending result to the output ffdf
+2014-11-01 00:10:17, working on split 63/164, extracting data in RAM of 1 split elements, totalling, 0.04713 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:22, ... applying FUN to selected data
+2014-11-01 00:10:22, ... appending result to the output ffdf
+2014-11-01 00:10:22, working on split 64/164, extracting data in RAM of 1 split elements, totalling, 0.04695 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:24, ... applying FUN to selected data
+2014-11-01 00:10:24, ... appending result to the output ffdf
+2014-11-01 00:10:24, working on split 65/164, extracting data in RAM of 1 split elements, totalling, 0.04586 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:27, ... applying FUN to selected data
+2014-11-01 00:10:27, ... appending result to the output ffdf
+2014-11-01 00:10:27, working on split 66/164, extracting data in RAM of 1 split elements, totalling, 0.04428 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:29, ... applying FUN to selected data
+2014-11-01 00:10:29, ... appending result to the output ffdf
+2014-11-01 00:10:29, working on split 67/164, extracting data in RAM of 1 split elements, totalling, 0.0434 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:31, ... applying FUN to selected data
+2014-11-01 00:10:31, ... appending result to the output ffdf
+2014-11-01 00:10:31, working on split 68/164, extracting data in RAM of 1 split elements, totalling, 0.04335 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:33, ... applying FUN to selected data
+2014-11-01 00:10:33, ... appending result to the output ffdf
+2014-11-01 00:10:33, working on split 69/164, extracting data in RAM of 1 split elements, totalling, 0.04259 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:35, ... applying FUN to selected data
+2014-11-01 00:10:35, ... appending result to the output ffdf
+2014-11-01 00:10:35, working on split 70/164, extracting data in RAM of 1 split elements, totalling, 0.04165 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:37, ... applying FUN to selected data
+2014-11-01 00:10:37, ... appending result to the output ffdf
+2014-11-01 00:10:37, working on split 71/164, extracting data in RAM of 1 split elements, totalling, 0.04074 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:39, ... applying FUN to selected data
+2014-11-01 00:10:39, ... appending result to the output ffdf
+2014-11-01 00:10:39, working on split 72/164, extracting data in RAM of 1 split elements, totalling, 0.04029 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:41, ... applying FUN to selected data
+2014-11-01 00:10:41, ... appending result to the output ffdf
+2014-11-01 00:10:41, working on split 73/164, extracting data in RAM of 1 split elements, totalling, 0.03875 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:43, ... applying FUN to selected data
+2014-11-01 00:10:43, ... appending result to the output ffdf
+2014-11-01 00:10:43, working on split 74/164, extracting data in RAM of 1 split elements, totalling, 0.03777 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:45, ... applying FUN to selected data
+2014-11-01 00:10:45, ... appending result to the output ffdf
+2014-11-01 00:10:45, working on split 75/164, extracting data in RAM of 1 split elements, totalling, 0.03564 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:46, ... applying FUN to selected data
+2014-11-01 00:10:46, ... appending result to the output ffdf
+2014-11-01 00:10:46, working on split 76/164, extracting data in RAM of 1 split elements, totalling, 0.03514 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:49, ... applying FUN to selected data
+2014-11-01 00:10:49, ... appending result to the output ffdf
+2014-11-01 00:10:49, working on split 77/164, extracting data in RAM of 1 split elements, totalling, 0.03101 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:54, ... applying FUN to selected data
+2014-11-01 00:10:54, ... appending result to the output ffdf
+2014-11-01 00:10:54, working on split 78/164, extracting data in RAM of 1 split elements, totalling, 0.02839 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:56, ... applying FUN to selected data
+2014-11-01 00:10:56, ... appending result to the output ffdf
+2014-11-01 00:10:56, working on split 79/164, extracting data in RAM of 1 split elements, totalling, 0.02808 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:57, ... applying FUN to selected data
+2014-11-01 00:10:57, ... appending result to the output ffdf
+2014-11-01 00:10:57, working on split 80/164, extracting data in RAM of 1 split elements, totalling, 0.02554 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:10:59, ... applying FUN to selected data
+2014-11-01 00:10:59, ... appending result to the output ffdf
+2014-11-01 00:10:59, working on split 81/164, extracting data in RAM of 1 split elements, totalling, 0.02545 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:00, ... applying FUN to selected data
+2014-11-01 00:11:00, ... appending result to the output ffdf
+2014-11-01 00:11:00, working on split 82/164, extracting data in RAM of 1 split elements, totalling, 0.02544 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:02, ... applying FUN to selected data
+2014-11-01 00:11:02, ... appending result to the output ffdf
+2014-11-01 00:11:02, working on split 83/164, extracting data in RAM of 1 split elements, totalling, 0.02364 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:03, ... applying FUN to selected data
+2014-11-01 00:11:03, ... appending result to the output ffdf
+2014-11-01 00:11:03, working on split 84/164, extracting data in RAM of 1 split elements, totalling, 0.0235 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:05, ... applying FUN to selected data
+2014-11-01 00:11:05, ... appending result to the output ffdf
+2014-11-01 00:11:05, working on split 85/164, extracting data in RAM of 1 split elements, totalling, 0.02217 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:06, ... applying FUN to selected data
+2014-11-01 00:11:06, ... appending result to the output ffdf
+2014-11-01 00:11:06, working on split 86/164, extracting data in RAM of 1 split elements, totalling, 0.02116 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:08, ... applying FUN to selected data
+2014-11-01 00:11:08, ... appending result to the output ffdf
+2014-11-01 00:11:08, working on split 87/164, extracting data in RAM of 1 split elements, totalling, 0.02098 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:09, ... applying FUN to selected data
+2014-11-01 00:11:09, ... appending result to the output ffdf
+2014-11-01 00:11:09, working on split 88/164, extracting data in RAM of 1 split elements, totalling, 0.02022 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:11, ... applying FUN to selected data
+2014-11-01 00:11:11, ... appending result to the output ffdf
+2014-11-01 00:11:11, working on split 89/164, extracting data in RAM of 1 split elements, totalling, 0.01969 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:12, ... applying FUN to selected data
+2014-11-01 00:11:12, ... appending result to the output ffdf
+2014-11-01 00:11:12, working on split 90/164, extracting data in RAM of 1 split elements, totalling, 0.01847 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:15, ... applying FUN to selected data
+2014-11-01 00:11:15, ... appending result to the output ffdf
+2014-11-01 00:11:15, working on split 91/164, extracting data in RAM of 1 split elements, totalling, 0.01785 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:16, ... applying FUN to selected data
+2014-11-01 00:11:16, ... appending result to the output ffdf
+2014-11-01 00:11:16, working on split 92/164, extracting data in RAM of 1 split elements, totalling, 0.01768 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:17, ... applying FUN to selected data
+2014-11-01 00:11:17, ... appending result to the output ffdf
+2014-11-01 00:11:17, working on split 93/164, extracting data in RAM of 1 split elements, totalling, 0.01758 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:19, ... applying FUN to selected data
+2014-11-01 00:11:19, ... appending result to the output ffdf
+2014-11-01 00:11:19, working on split 94/164, extracting data in RAM of 1 split elements, totalling, 0.01757 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:20, ... applying FUN to selected data
+2014-11-01 00:11:20, ... appending result to the output ffdf
+2014-11-01 00:11:20, working on split 95/164, extracting data in RAM of 1 split elements, totalling, 0.0169 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:21, ... applying FUN to selected data
+2014-11-01 00:11:21, ... appending result to the output ffdf
+2014-11-01 00:11:21, working on split 96/164, extracting data in RAM of 1 split elements, totalling, 0.01679 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:22, ... applying FUN to selected data
+2014-11-01 00:11:22, ... appending result to the output ffdf
+2014-11-01 00:11:22, working on split 97/164, extracting data in RAM of 1 split elements, totalling, 0.01679 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:23, ... applying FUN to selected data
+2014-11-01 00:11:23, ... appending result to the output ffdf
+2014-11-01 00:11:23, working on split 98/164, extracting data in RAM of 1 split elements, totalling, 0.01673 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:25, ... applying FUN to selected data
+2014-11-01 00:11:25, ... appending result to the output ffdf
+2014-11-01 00:11:25, working on split 99/164, extracting data in RAM of 1 split elements, totalling, 0.01669 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:25, ... applying FUN to selected data
+2014-11-01 00:11:26, ... appending result to the output ffdf
+2014-11-01 00:11:26, working on split 100/164, extracting data in RAM of 1 split elements, totalling, 0.01652 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:27, ... applying FUN to selected data
+2014-11-01 00:11:27, ... appending result to the output ffdf
+2014-11-01 00:11:27, working on split 101/164, extracting data in RAM of 1 split elements, totalling, 0.01584 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:28, ... applying FUN to selected data
+2014-11-01 00:11:28, ... appending result to the output ffdf
+2014-11-01 00:11:28, working on split 102/164, extracting data in RAM of 1 split elements, totalling, 0.01564 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:29, ... applying FUN to selected data
+2014-11-01 00:11:29, ... appending result to the output ffdf
+2014-11-01 00:11:29, working on split 103/164, extracting data in RAM of 1 split elements, totalling, 0.01561 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:31, ... applying FUN to selected data
+2014-11-01 00:11:31, ... appending result to the output ffdf
+2014-11-01 00:11:31, working on split 104/164, extracting data in RAM of 1 split elements, totalling, 0.01456 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:32, ... applying FUN to selected data
+2014-11-01 00:11:32, ... appending result to the output ffdf
+2014-11-01 00:11:32, working on split 105/164, extracting data in RAM of 1 split elements, totalling, 0.01408 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:33, ... applying FUN to selected data
+2014-11-01 00:11:33, ... appending result to the output ffdf
+2014-11-01 00:11:33, working on split 106/164, extracting data in RAM of 1 split elements, totalling, 0.01382 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:34, ... applying FUN to selected data
+2014-11-01 00:11:34, ... appending result to the output ffdf
+2014-11-01 00:11:34, working on split 107/164, extracting data in RAM of 1 split elements, totalling, 0.01368 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:35, ... applying FUN to selected data
+2014-11-01 00:11:35, ... appending result to the output ffdf
+2014-11-01 00:11:35, working on split 108/164, extracting data in RAM of 1 split elements, totalling, 0.01347 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:36, ... applying FUN to selected data
+2014-11-01 00:11:36, ... appending result to the output ffdf
+2014-11-01 00:11:36, working on split 109/164, extracting data in RAM of 1 split elements, totalling, 0.01308 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:37, ... applying FUN to selected data
+2014-11-01 00:11:37, ... appending result to the output ffdf
+2014-11-01 00:11:37, working on split 110/164, extracting data in RAM of 1 split elements, totalling, 0.01287 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:38, ... applying FUN to selected data
+2014-11-01 00:11:38, ... appending result to the output ffdf
+2014-11-01 00:11:38, working on split 111/164, extracting data in RAM of 1 split elements, totalling, 0.01276 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:39, ... applying FUN to selected data
+2014-11-01 00:11:39, ... appending result to the output ffdf
+2014-11-01 00:11:39, working on split 112/164, extracting data in RAM of 1 split elements, totalling, 0.0127 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:40, ... applying FUN to selected data
+2014-11-01 00:11:40, ... appending result to the output ffdf
+2014-11-01 00:11:40, working on split 113/164, extracting data in RAM of 1 split elements, totalling, 0.01267 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:41, ... applying FUN to selected data
+2014-11-01 00:11:41, ... appending result to the output ffdf
+2014-11-01 00:11:41, working on split 114/164, extracting data in RAM of 1 split elements, totalling, 0.01236 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:42, ... applying FUN to selected data
+2014-11-01 00:11:42, ... appending result to the output ffdf
+2014-11-01 00:11:42, working on split 115/164, extracting data in RAM of 1 split elements, totalling, 0.01166 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:43, ... applying FUN to selected data
+2014-11-01 00:11:43, ... appending result to the output ffdf
+2014-11-01 00:11:43, working on split 116/164, extracting data in RAM of 1 split elements, totalling, 0.01088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:44, ... applying FUN to selected data
+2014-11-01 00:11:44, ... appending result to the output ffdf
+2014-11-01 00:11:44, working on split 117/164, extracting data in RAM of 1 split elements, totalling, 0.01087 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:45, ... applying FUN to selected data
+2014-11-01 00:11:45, ... appending result to the output ffdf
+2014-11-01 00:11:45, working on split 118/164, extracting data in RAM of 1 split elements, totalling, 0.01054 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:46, ... applying FUN to selected data
+2014-11-01 00:11:46, ... appending result to the output ffdf
+2014-11-01 00:11:46, working on split 119/164, extracting data in RAM of 1 split elements, totalling, 0.00985 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:47, ... applying FUN to selected data
+2014-11-01 00:11:47, ... appending result to the output ffdf
+2014-11-01 00:11:47, working on split 120/164, extracting data in RAM of 1 split elements, totalling, 0.00935 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:48, ... applying FUN to selected data
+2014-11-01 00:11:48, ... appending result to the output ffdf
+2014-11-01 00:11:48, working on split 121/164, extracting data in RAM of 1 split elements, totalling, 0.00924 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:49, ... applying FUN to selected data
+2014-11-01 00:11:49, ... appending result to the output ffdf
+2014-11-01 00:11:49, working on split 122/164, extracting data in RAM of 1 split elements, totalling, 0.00923 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:50, ... applying FUN to selected data
+2014-11-01 00:11:50, ... appending result to the output ffdf
+2014-11-01 00:11:50, working on split 123/164, extracting data in RAM of 1 split elements, totalling, 0.00912 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:51, ... applying FUN to selected data
+2014-11-01 00:11:51, ... appending result to the output ffdf
+2014-11-01 00:11:51, working on split 124/164, extracting data in RAM of 1 split elements, totalling, 0.0088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:52, ... applying FUN to selected data
+2014-11-01 00:11:52, ... appending result to the output ffdf
+2014-11-01 00:11:52, working on split 125/164, extracting data in RAM of 1 split elements, totalling, 0.0088 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:53, ... applying FUN to selected data
+2014-11-01 00:11:53, ... appending result to the output ffdf
+2014-11-01 00:11:53, working on split 126/164, extracting data in RAM of 1 split elements, totalling, 0.00853 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:54, ... applying FUN to selected data
+2014-11-01 00:11:54, ... appending result to the output ffdf
+2014-11-01 00:11:54, working on split 127/164, extracting data in RAM of 1 split elements, totalling, 0.0083 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:54, ... applying FUN to selected data
+2014-11-01 00:11:54, ... appending result to the output ffdf
+2014-11-01 00:11:54, working on split 128/164, extracting data in RAM of 1 split elements, totalling, 0.00826 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:55, ... applying FUN to selected data
+2014-11-01 00:11:55, ... appending result to the output ffdf
+2014-11-01 00:11:55, working on split 129/164, extracting data in RAM of 1 split elements, totalling, 0.00808 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:56, ... applying FUN to selected data
+2014-11-01 00:11:56, ... appending result to the output ffdf
+2014-11-01 00:11:56, working on split 130/164, extracting data in RAM of 1 split elements, totalling, 0.00792 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:57, ... applying FUN to selected data
+2014-11-01 00:11:57, ... appending result to the output ffdf
+2014-11-01 00:11:57, working on split 131/164, extracting data in RAM of 2 split elements, totalling, 0.01561 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:58, ... applying FUN to selected data
+2014-11-01 00:11:58, ... appending result to the output ffdf
+2014-11-01 00:11:58, working on split 132/164, extracting data in RAM of 2 split elements, totalling, 0.01505 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:11:59, ... applying FUN to selected data
+2014-11-01 00:11:59, ... appending result to the output ffdf
+2014-11-01 00:11:59, working on split 133/164, extracting data in RAM of 2 split elements, totalling, 0.01456 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:00, ... applying FUN to selected data
+2014-11-01 00:12:00, ... appending result to the output ffdf
+2014-11-01 00:12:00, working on split 134/164, extracting data in RAM of 2 split elements, totalling, 0.01431 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:02, ... applying FUN to selected data
+2014-11-01 00:12:02, ... appending result to the output ffdf
+2014-11-01 00:12:02, working on split 135/164, extracting data in RAM of 2 split elements, totalling, 0.01405 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:03, ... applying FUN to selected data
+2014-11-01 00:12:03, ... appending result to the output ffdf
+2014-11-01 00:12:03, working on split 136/164, extracting data in RAM of 2 split elements, totalling, 0.01361 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:04, ... applying FUN to selected data
+2014-11-01 00:12:04, ... appending result to the output ffdf
+2014-11-01 00:12:04, working on split 137/164, extracting data in RAM of 2 split elements, totalling, 0.01311 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:05, ... applying FUN to selected data
+2014-11-01 00:12:05, ... appending result to the output ffdf
+2014-11-01 00:12:05, working on split 138/164, extracting data in RAM of 2 split elements, totalling, 0.01276 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:06, ... applying FUN to selected data
+2014-11-01 00:12:06, ... appending result to the output ffdf
+2014-11-01 00:12:06, working on split 139/164, extracting data in RAM of 2 split elements, totalling, 0.01241 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:07, ... applying FUN to selected data
+2014-11-01 00:12:07, ... appending result to the output ffdf
+2014-11-01 00:12:07, working on split 140/164, extracting data in RAM of 2 split elements, totalling, 0.0122 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:08, ... applying FUN to selected data
+2014-11-01 00:12:09, ... appending result to the output ffdf
+2014-11-01 00:12:09, working on split 141/164, extracting data in RAM of 2 split elements, totalling, 0.01207 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:09, ... applying FUN to selected data
+2014-11-01 00:12:09, ... appending result to the output ffdf
+2014-11-01 00:12:09, working on split 142/164, extracting data in RAM of 2 split elements, totalling, 0.0119 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:10, ... applying FUN to selected data
+2014-11-01 00:12:10, ... appending result to the output ffdf
+2014-11-01 00:12:10, working on split 143/164, extracting data in RAM of 2 split elements, totalling, 0.01164 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:12, ... applying FUN to selected data
+2014-11-01 00:12:12, ... appending result to the output ffdf
+2014-11-01 00:12:12, working on split 144/164, extracting data in RAM of 2 split elements, totalling, 0.01133 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:13, ... applying FUN to selected data
+2014-11-01 00:12:13, ... appending result to the output ffdf
+2014-11-01 00:12:13, working on split 145/164, extracting data in RAM of 2 split elements, totalling, 0.01108 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:13, ... applying FUN to selected data
+2014-11-01 00:12:13, ... appending result to the output ffdf
+2014-11-01 00:12:13, working on split 146/164, extracting data in RAM of 2 split elements, totalling, 0.01054 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:14, ... applying FUN to selected data
+2014-11-01 00:12:14, ... appending result to the output ffdf
+2014-11-01 00:12:14, working on split 147/164, extracting data in RAM of 3 split elements, totalling, 0.01533 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:16, ... applying FUN to selected data
+2014-11-01 00:12:16, ... appending result to the output ffdf
+2014-11-01 00:12:16, working on split 148/164, extracting data in RAM of 3 split elements, totalling, 0.01444 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:17, ... applying FUN to selected data
+2014-11-01 00:12:17, ... appending result to the output ffdf
+2014-11-01 00:12:17, working on split 149/164, extracting data in RAM of 3 split elements, totalling, 0.01369 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:18, ... applying FUN to selected data
+2014-11-01 00:12:18, ... appending result to the output ffdf
+2014-11-01 00:12:18, working on split 150/164, extracting data in RAM of 3 split elements, totalling, 0.01201 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:19, ... applying FUN to selected data
+2014-11-01 00:12:19, ... appending result to the output ffdf
+2014-11-01 00:12:19, working on split 151/164, extracting data in RAM of 4 split elements, totalling, 0.01508 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:20, ... applying FUN to selected data
+2014-11-01 00:12:20, ... appending result to the output ffdf
+2014-11-01 00:12:20, working on split 152/164, extracting data in RAM of 4 split elements, totalling, 0.01381 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:21, ... applying FUN to selected data
+2014-11-01 00:12:21, ... appending result to the output ffdf
+2014-11-01 00:12:21, working on split 153/164, extracting data in RAM of 5 split elements, totalling, 0.01489 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:22, ... applying FUN to selected data
+2014-11-01 00:12:22, ... appending result to the output ffdf
+2014-11-01 00:12:22, working on split 154/164, extracting data in RAM of 5 split elements, totalling, 0.01394 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:23, ... applying FUN to selected data
+2014-11-01 00:12:23, ... appending result to the output ffdf
+2014-11-01 00:12:23, working on split 155/164, extracting data in RAM of 6 split elements, totalling, 0.01509 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:24, ... applying FUN to selected data
+2014-11-01 00:12:24, ... appending result to the output ffdf
+2014-11-01 00:12:24, working on split 156/164, extracting data in RAM of 6 split elements, totalling, 0.01356 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:25, ... applying FUN to selected data
+2014-11-01 00:12:25, ... appending result to the output ffdf
+2014-11-01 00:12:25, working on split 157/164, extracting data in RAM of 7 split elements, totalling, 0.01466 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:27, ... applying FUN to selected data
+2014-11-01 00:12:27, ... appending result to the output ffdf
+2014-11-01 00:12:27, working on split 158/164, extracting data in RAM of 8 split elements, totalling, 0.01549 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:28, ... applying FUN to selected data
+2014-11-01 00:12:28, ... appending result to the output ffdf
+2014-11-01 00:12:28, working on split 159/164, extracting data in RAM of 8 split elements, totalling, 0.01424 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:29, ... applying FUN to selected data
+2014-11-01 00:12:29, ... appending result to the output ffdf
+2014-11-01 00:12:29, working on split 160/164, extracting data in RAM of 10 split elements, totalling, 0.01492 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:30, ... applying FUN to selected data
+2014-11-01 00:12:30, ... appending result to the output ffdf
+2014-11-01 00:12:30, working on split 161/164, extracting data in RAM of 13 split elements, totalling, 0.01556 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:31, ... applying FUN to selected data
+2014-11-01 00:12:31, ... appending result to the output ffdf
+2014-11-01 00:12:31, working on split 162/164, extracting data in RAM of 18 split elements, totalling, 0.01538 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:32, ... applying FUN to selected data
+2014-11-01 00:12:32, ... appending result to the output ffdf
+2014-11-01 00:12:32, working on split 163/164, extracting data in RAM of 34 split elements, totalling, 0.01558 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:33, ... applying FUN to selected data
+2014-11-01 00:12:33, ... appending result to the output ffdf
+2014-11-01 00:12:33, working on split 164/164, extracting data in RAM of 45 split elements, totalling, 0.00276 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:12:34, ... applying FUN to selected data
+2014-11-01 00:12:34, ... appending result to the output ffdf
+    user   system  elapsed 
+ 484.602  239.916 2067.493 
+Warning message:
+In ffdfdply(x = dat_subset, split = as.character(dat_subset$Origin),  :
+  single split does not fit into BATCHBYTES
+> 
+> if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2a/b for ff done!"),
++          recipients = c(1, 2))
++ }
+> 
+> # Check that flights were correctly extracted and means/medians calculated
+> unique.ff(flights_bayarea$Origin) # How to check? This gives levels not unique values! ???
+ff (open) integer length=347 (347) levels: BUR LAS LAX OAK PHX SAN SFO SJC SMF SNA ABE ABQ ACV ALB ALO AMA ANC ATL AUS AVP BDL BFL BGR BHM BIL BLI BNA BOI BOS BTV BUF BWI CAE CAK CCR CHS CID CLE CLT CMH CMI COS CPR CRP CRW CVG DAB DAL DAY DCA DEN DFW DRO DSM DTW ELP EUG EWR FAI FAR FAT FLG FLL FOE FSD GCN GEG GJT GNV GRB GRR GSO GSP GTF HNL HOU HPN HRL HSV IAD IAH ICT ILG ILM IND ISP JAN JAX JFK KOA LBB LEX LGA LGB LIH LIT LMT LNK MAF MBS MCI MCO MDT MDW MEM MFR MHT MIA MKE MLB MLI MOB MRY MSN MSP MSY OGG OKC OMA ONT ORD ORF PBI PDX PHL PIA PIT PNS PSC PSP PUB PVD PWM RAP RDD RDM RDU RIC RNO ROC RST RSW SAT SAV SBA SCK SDF SEA SGF SJU SLC SRQ STL STT STX SUX SYR TLH TOL TPA TUL TUS TYS YKM YUM AGS APF ATW AVL AZO BGM BIS BTR BZN CHA CHO CSG CWA DLH EAU ELM ERI EVV EYW FAY FNT FWA GFK GPT GUM HTS ISO ITH LAN LFT LSE LYH MFE MGM MLU MOT MSO MYR OAJ ORH PFN ROA ROR SBN SHV SPN TRI UCA VPS YAP BET BTM CDV FCA HLN IDA JAC JNU KTN OME OTZ PHF PIE PSG SCC SIT TVL WRG YAK GUC HDN PIR ACY GST DET BFI ROP TVC ABI EGE SUN PMD SWF EFD PSE HVN TTN BQN SPI BRW LWB AKN DLG ADQ ANI KSM MTJ DUT COD ACK BRO TWF MKK MIB ITO ACT BPT CLL FSM GGG ILE LAW LRD SBP SJT SPS TXK XNA BMI DBQ TYR MQT RDR MAZ AEX CDC CEC CIC CLD EKO IPL IYK LCH MOD OGD OXR PIH SGU SMX VCT VIS ABY BQK DHN FLO GTR MCN MEI VLD SCE FMN ADK CYS WYS BFF LNY CKB PVU GRK LWS HKY TUP ASE TEX RFD SOP CMX PLN RHI MTH HHH GLH MKC EWN SLE BJI INL ROW GCC RKS MKG OTH
+  [1]   [2]   [3]   [4]   [5]   [6]   [7]   [8]       [340] [341] [342] [343] 
+  BUR   LAS   LAX   OAK   PHX   SAN   SFO   SJC     :   SLE   BJI   INL   ROW 
+[344] [345] [346] [347] 
+  GCC   RKS   MKG   OTH 
+> head(depdelay_mean)
+ffdf (all open) dim=c(347,2), dimorder=c(1,2) row.names=NULL
+ffdf virtual mapping
+             PhysicalName VirtualVmode PhysicalVmode  AsIs VirtualIsMatrix
+Origin             Origin      integer       integer FALSE           FALSE
+meanDepDelay meanDepDelay       double        double FALSE           FALSE
+             PhysicalIsMatrix PhysicalElementNo PhysicalFirstCol
+Origin                  FALSE                 1                1
+meanDepDelay            FALSE                 2                1
+             PhysicalLastCol PhysicalIsOpen
+Origin                     1           TRUE
+meanDepDelay               1           TRUE
+ffdf data
+       Origin meanDepDelay
+1   ORD          11.783983
+2   ATL          10.414012
+3   DFW           9.079222
+4   LAX           7.956537
+5   PHX           8.911071
+6   DEN           9.072012
+7   DTW           8.767393
+8   IAH           7.204776
+:           :            :
+340 SLE           2.348864
+341 INL           3.007519
+342 BJI           5.368984
+343 ROW           8.813187
+344 GCC           8.301942
+345 RKS           3.908207
+346 MKG           2.859335
+347 OTH          21.765531
+> head(depdelay_median)
+ffdf (all open) dim=c(347,2), dimorder=c(1,2) row.names=NULL
+ffdf virtual mapping
+                 PhysicalName VirtualVmode PhysicalVmode  AsIs VirtualIsMatrix
+Origin                 Origin      integer       integer FALSE           FALSE
+medianDepDelay medianDepDelay       double        double FALSE           FALSE
+               PhysicalIsMatrix PhysicalElementNo PhysicalFirstCol
+Origin                    FALSE                 1                1
+medianDepDelay            FALSE                 2                1
+               PhysicalLastCol PhysicalIsOpen
+Origin                       1           TRUE
+medianDepDelay               1           TRUE
+ffdf data
+    Origin medianDepDelay
+1      ORD             1 
+2      ATL             1 
+3      DFW             0 
+4      LAX             0 
+5      PHX             0 
+6      DEN             0 
+7      DTW             0 
+8      IAH             0 
+:        :              :
+340    SLE            -3 
+341    INL            -5 
+342    BJI            -4 
+343    ROW            -2 
+344    GCC            -2 
+345    RKS            -3 
+346    MKG            -5 
+347    OTH             2 
+> #======================================================================
+> # Question 3
+> # (b) ff
+> ffload(file.path(data_dir, "AirlineDataAll"), rootpath = "/mnt/airline")
+character(0)
+Warning message:
+In FUN("dat"[[1L]], ...) : did not overwrite object 'dat'
+> 
+> # Extract the 20 observations with the longest departure delays 
+> # from airports with at least 1 million flights
+> system.time({
++   num_departing_flights <- ffdfdply(x = dat, split = as.character(dat$Origin),  
++                                     FUN = function(x) 
++                                       summaryBy(Origin ~ Origin, data = x, 
++                                                 FUN = sum, keep.names = FALSE))
++   dat_merged <- merge(dat_subset, num_departing_flights, by = "Origin")
++   
++   select_num_departures <- dat_merged$Origin.sum > 1000000
++   indices_select_num_departures <- ffwhich(select_num_departures, 
++                                            select_num_departures == TRUE)
++   dat_merged_subset <- dat_merged[indices_select_num_departures, ]
++   select_top20 <- fforder(dat_merged_subset$DepDelay, decreasing = TRUE) <= 20
++   indices_top20 <- ffwhich(select_top20, select_top20 == TRUE)
++   dat_top20 <- dat_merged_subset[indices_top20, ]
++ })
+2014-11-01 00:12:50, calculating split sizes
+2014-11-01 00:12:55, building up split locations
+2014-11-01 00:15:40, working on split 1/165, extracting data in RAM of 1 split elements, totalling, 0.71274 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:16:51, ... applying FUN to selected data
+2014-11-01 00:16:55, ... appending result to the output ffdf
+2014-11-01 00:16:55, working on split 2/165, extracting data in RAM of 1 split elements, totalling, 0.65911 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:17:53, ... applying FUN to selected data
+2014-11-01 00:17:57, ... appending result to the output ffdf
+2014-11-01 00:17:57, working on split 3/165, extracting data in RAM of 1 split elements, totalling, 0.61698 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:18:55, ... applying FUN to selected data
+2014-11-01 00:18:59, ... appending result to the output ffdf
+2014-11-01 00:18:59, working on split 4/165, extracting data in RAM of 1 split elements, totalling, 0.44175 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:19:53, ... applying FUN to selected data
+2014-11-01 00:19:56, ... appending result to the output ffdf
+2014-11-01 00:19:56, working on split 5/165, extracting data in RAM of 1 split elements, totalling, 0.37715 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:20:49, ... applying FUN to selected data
+2014-11-01 00:20:52, ... appending result to the output ffdf
+2014-11-01 00:20:52, working on split 6/165, extracting data in RAM of 1 split elements, totalling, 0.35866 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:21:46, ... applying FUN to selected data
+2014-11-01 00:21:48, ... appending result to the output ffdf
+2014-11-01 00:21:48, working on split 7/165, extracting data in RAM of 1 split elements, totalling, 0.32185 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:22:41, ... applying FUN to selected data
+2014-11-01 00:22:43, ... appending result to the output ffdf
+2014-11-01 00:22:43, working on split 8/165, extracting data in RAM of 1 split elements, totalling, 0.31162 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:23:39, ... applying FUN to selected data
+2014-11-01 00:23:41, ... appending result to the output ffdf
+2014-11-01 00:23:41, working on split 9/165, extracting data in RAM of 1 split elements, totalling, 0.29763 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:24:34, ... applying FUN to selected data
+2014-11-01 00:24:36, ... appending result to the output ffdf
+2014-11-01 00:24:36, working on split 10/165, extracting data in RAM of 1 split elements, totalling, 0.29535 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:25:30, ... applying FUN to selected data
+2014-11-01 00:25:32, ... appending result to the output ffdf
+2014-11-01 00:25:32, working on split 11/165, extracting data in RAM of 1 split elements, totalling, 0.29267 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:26:27, ... applying FUN to selected data
+2014-11-01 00:26:28, ... appending result to the output ffdf
+2014-11-01 00:26:29, working on split 12/165, extracting data in RAM of 1 split elements, totalling, 0.29243 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:27:22, ... applying FUN to selected data
+2014-11-01 00:27:24, ... appending result to the output ffdf
+2014-11-01 00:27:24, working on split 13/165, extracting data in RAM of 1 split elements, totalling, 0.28423 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:28:17, ... applying FUN to selected data
+2014-11-01 00:28:19, ... appending result to the output ffdf
+2014-11-01 00:28:19, working on split 14/165, extracting data in RAM of 1 split elements, totalling, 0.27506 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:29:14, ... applying FUN to selected data
+2014-11-01 00:29:16, ... appending result to the output ffdf
+2014-11-01 00:29:16, working on split 15/165, extracting data in RAM of 1 split elements, totalling, 0.24813 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:30:09, ... applying FUN to selected data
+2014-11-01 00:30:11, ... appending result to the output ffdf
+2014-11-01 00:30:11, working on split 16/165, extracting data in RAM of 1 split elements, totalling, 0.2475 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:31:05, ... applying FUN to selected data
+2014-11-01 00:31:06, ... appending result to the output ffdf
+2014-11-01 00:31:06, working on split 17/165, extracting data in RAM of 1 split elements, totalling, 0.2339 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:32:00, ... applying FUN to selected data
+2014-11-01 00:32:02, ... appending result to the output ffdf
+2014-11-01 00:32:02, working on split 18/165, extracting data in RAM of 1 split elements, totalling, 0.22388 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:32:56, ... applying FUN to selected data
+2014-11-01 00:32:57, ... appending result to the output ffdf
+2014-11-01 00:32:57, working on split 19/165, extracting data in RAM of 1 split elements, totalling, 0.21641 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:33:52, ... applying FUN to selected data
+2014-11-01 00:33:53, ... appending result to the output ffdf
+2014-11-01 00:33:53, working on split 20/165, extracting data in RAM of 1 split elements, totalling, 0.21435 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:34:47, ... applying FUN to selected data
+2014-11-01 00:34:48, ... appending result to the output ffdf
+2014-11-01 00:34:48, working on split 21/165, extracting data in RAM of 1 split elements, totalling, 0.21255 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:35:43, ... applying FUN to selected data
+2014-11-01 00:35:44, ... appending result to the output ffdf
+2014-11-01 00:35:44, working on split 22/165, extracting data in RAM of 1 split elements, totalling, 0.20778 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:36:35, ... applying FUN to selected data
+2014-11-01 00:36:36, ... appending result to the output ffdf
+2014-11-01 00:36:36, working on split 23/165, extracting data in RAM of 1 split elements, totalling, 0.19802 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:37:29, ... applying FUN to selected data
+2014-11-01 00:37:30, ... appending result to the output ffdf
+2014-11-01 00:37:30, working on split 24/165, extracting data in RAM of 1 split elements, totalling, 0.18553 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:38:22, ... applying FUN to selected data
+2014-11-01 00:38:23, ... appending result to the output ffdf
+2014-11-01 00:38:23, working on split 25/165, extracting data in RAM of 1 split elements, totalling, 0.16711 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:39:15, ... applying FUN to selected data
+2014-11-01 00:39:16, ... appending result to the output ffdf
+2014-11-01 00:39:16, working on split 26/165, extracting data in RAM of 1 split elements, totalling, 0.15645 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:40:09, ... applying FUN to selected data
+2014-11-01 00:40:10, ... appending result to the output ffdf
+2014-11-01 00:40:10, working on split 27/165, extracting data in RAM of 1 split elements, totalling, 0.15296 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:41:03, ... applying FUN to selected data
+2014-11-01 00:41:04, ... appending result to the output ffdf
+2014-11-01 00:41:04, working on split 28/165, extracting data in RAM of 1 split elements, totalling, 0.14444 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:41:57, ... applying FUN to selected data
+2014-11-01 00:41:58, ... appending result to the output ffdf
+2014-11-01 00:41:58, working on split 29/165, extracting data in RAM of 1 split elements, totalling, 0.14343 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:43:07, ... applying FUN to selected data
+2014-11-01 00:43:08, ... appending result to the output ffdf
+2014-11-01 00:43:08, working on split 30/165, extracting data in RAM of 1 split elements, totalling, 0.14278 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:43:44, ... applying FUN to selected data
+2014-11-01 00:43:44, ... appending result to the output ffdf
+2014-11-01 00:43:44, working on split 31/165, extracting data in RAM of 1 split elements, totalling, 0.13038 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:44:26, ... applying FUN to selected data
+2014-11-01 00:44:27, ... appending result to the output ffdf
+2014-11-01 00:44:27, working on split 32/165, extracting data in RAM of 1 split elements, totalling, 0.13028 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:44:51, ... applying FUN to selected data
+2014-11-01 00:44:52, ... appending result to the output ffdf
+2014-11-01 00:44:52, working on split 33/165, extracting data in RAM of 1 split elements, totalling, 0.12695 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:45:43, ... applying FUN to selected data
+2014-11-01 00:45:44, ... appending result to the output ffdf
+2014-11-01 00:45:44, working on split 34/165, extracting data in RAM of 1 split elements, totalling, 0.12688 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:46:53, ... applying FUN to selected data
+2014-11-01 00:46:53, ... appending result to the output ffdf
+2014-11-01 00:46:53, working on split 35/165, extracting data in RAM of 1 split elements, totalling, 0.12644 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:47:39, ... applying FUN to selected data
+2014-11-01 00:47:40, ... appending result to the output ffdf
+2014-11-01 00:47:40, working on split 36/165, extracting data in RAM of 1 split elements, totalling, 0.1254 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:48:33, ... applying FUN to selected data
+2014-11-01 00:48:34, ... appending result to the output ffdf
+2014-11-01 00:48:34, working on split 37/165, extracting data in RAM of 1 split elements, totalling, 0.11972 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:49:29, ... applying FUN to selected data
+2014-11-01 00:49:30, ... appending result to the output ffdf
+2014-11-01 00:49:30, working on split 38/165, extracting data in RAM of 1 split elements, totalling, 0.11394 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:50:31, ... applying FUN to selected data
+2014-11-01 00:50:31, ... appending result to the output ffdf
+2014-11-01 00:50:31, working on split 39/165, extracting data in RAM of 1 split elements, totalling, 0.11201 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:51:23, ... applying FUN to selected data
+2014-11-01 00:51:23, ... appending result to the output ffdf
+2014-11-01 00:51:23, working on split 40/165, extracting data in RAM of 1 split elements, totalling, 0.10946 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:51:54, ... applying FUN to selected data
+2014-11-01 00:51:55, ... appending result to the output ffdf
+2014-11-01 00:51:55, working on split 41/165, extracting data in RAM of 1 split elements, totalling, 0.10321 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:52:32, ... applying FUN to selected data
+2014-11-01 00:52:33, ... appending result to the output ffdf
+2014-11-01 00:52:33, working on split 42/165, extracting data in RAM of 1 split elements, totalling, 0.10287 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:52:46, ... applying FUN to selected data
+2014-11-01 00:52:47, ... appending result to the output ffdf
+2014-11-01 00:52:47, working on split 43/165, extracting data in RAM of 1 split elements, totalling, 0.08911 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:53:40, ... applying FUN to selected data
+2014-11-01 00:53:41, ... appending result to the output ffdf
+2014-11-01 00:53:41, working on split 44/165, extracting data in RAM of 1 split elements, totalling, 0.08881 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:54:35, ... applying FUN to selected data
+2014-11-01 00:54:36, ... appending result to the output ffdf
+2014-11-01 00:54:36, working on split 45/165, extracting data in RAM of 1 split elements, totalling, 0.08792 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:55:10, ... applying FUN to selected data
+2014-11-01 00:55:10, ... appending result to the output ffdf
+2014-11-01 00:55:10, working on split 46/165, extracting data in RAM of 1 split elements, totalling, 0.08749 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:55:47, ... applying FUN to selected data
+2014-11-01 00:55:48, ... appending result to the output ffdf
+2014-11-01 00:55:48, working on split 47/165, extracting data in RAM of 1 split elements, totalling, 0.08681 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:56:11, ... applying FUN to selected data
+2014-11-01 00:56:12, ... appending result to the output ffdf
+2014-11-01 00:56:12, working on split 48/165, extracting data in RAM of 1 split elements, totalling, 0.08369 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:56:41, ... applying FUN to selected data
+2014-11-01 00:56:42, ... appending result to the output ffdf
+2014-11-01 00:56:42, working on split 49/165, extracting data in RAM of 1 split elements, totalling, 0.08214 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:57:07, ... applying FUN to selected data
+2014-11-01 00:57:08, ... appending result to the output ffdf
+2014-11-01 00:57:08, working on split 50/165, extracting data in RAM of 1 split elements, totalling, 0.08204 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:57:43, ... applying FUN to selected data
+2014-11-01 00:57:44, ... appending result to the output ffdf
+2014-11-01 00:57:44, working on split 51/165, extracting data in RAM of 1 split elements, totalling, 0.07033 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:58:08, ... applying FUN to selected data
+2014-11-01 00:58:09, ... appending result to the output ffdf
+2014-11-01 00:58:09, working on split 52/165, extracting data in RAM of 1 split elements, totalling, 0.06277 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:58:20, ... applying FUN to selected data
+2014-11-01 00:58:20, ... appending result to the output ffdf
+2014-11-01 00:58:20, working on split 53/165, extracting data in RAM of 1 split elements, totalling, 0.05751 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:58:42, ... applying FUN to selected data
+2014-11-01 00:58:42, ... appending result to the output ffdf
+2014-11-01 00:58:42, working on split 54/165, extracting data in RAM of 1 split elements, totalling, 0.05621 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:59:05, ... applying FUN to selected data
+2014-11-01 00:59:06, ... appending result to the output ffdf
+2014-11-01 00:59:06, working on split 55/165, extracting data in RAM of 1 split elements, totalling, 0.05549 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:59:17, ... applying FUN to selected data
+2014-11-01 00:59:17, ... appending result to the output ffdf
+2014-11-01 00:59:17, working on split 56/165, extracting data in RAM of 1 split elements, totalling, 0.05518 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:59:28, ... applying FUN to selected data
+2014-11-01 00:59:28, ... appending result to the output ffdf
+2014-11-01 00:59:28, working on split 57/165, extracting data in RAM of 1 split elements, totalling, 0.0551 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 00:59:42, ... applying FUN to selected data
+2014-11-01 00:59:42, ... appending result to the output ffdf
+2014-11-01 00:59:42, working on split 58/165, extracting data in RAM of 1 split elements, totalling, 0.05289 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:00:06, ... applying FUN to selected data
+2014-11-01 01:00:06, ... appending result to the output ffdf
+2014-11-01 01:00:06, working on split 59/165, extracting data in RAM of 1 split elements, totalling, 0.05223 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:00:19, ... applying FUN to selected data
+2014-11-01 01:00:19, ... appending result to the output ffdf
+2014-11-01 01:00:19, working on split 60/165, extracting data in RAM of 1 split elements, totalling, 0.0509 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:00:28, ... applying FUN to selected data
+2014-11-01 01:00:29, ... appending result to the output ffdf
+2014-11-01 01:00:29, working on split 61/165, extracting data in RAM of 1 split elements, totalling, 0.04987 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:00:41, ... applying FUN to selected data
+2014-11-01 01:00:41, ... appending result to the output ffdf
+2014-11-01 01:00:41, working on split 62/165, extracting data in RAM of 1 split elements, totalling, 0.04981 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:00:48, ... applying FUN to selected data
+2014-11-01 01:00:48, ... appending result to the output ffdf
+2014-11-01 01:00:48, working on split 63/165, extracting data in RAM of 1 split elements, totalling, 0.04826 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:01:03, ... applying FUN to selected data
+2014-11-01 01:01:03, ... appending result to the output ffdf
+2014-11-01 01:01:03, working on split 64/165, extracting data in RAM of 1 split elements, totalling, 0.0478 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:01:09, ... applying FUN to selected data
+2014-11-01 01:01:10, ... appending result to the output ffdf
+2014-11-01 01:01:10, working on split 65/165, extracting data in RAM of 1 split elements, totalling, 0.04681 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:01:19, ... applying FUN to selected data
+2014-11-01 01:01:19, ... appending result to the output ffdf
+2014-11-01 01:01:19, working on split 66/165, extracting data in RAM of 1 split elements, totalling, 0.04472 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:01:32, ... applying FUN to selected data
+2014-11-01 01:01:32, ... appending result to the output ffdf
+2014-11-01 01:01:32, working on split 67/165, extracting data in RAM of 1 split elements, totalling, 0.04399 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:01:43, ... applying FUN to selected data
+2014-11-01 01:01:43, ... appending result to the output ffdf
+2014-11-01 01:01:43, working on split 68/165, extracting data in RAM of 1 split elements, totalling, 0.04392 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:01:51, ... applying FUN to selected data
+2014-11-01 01:01:51, ... appending result to the output ffdf
+2014-11-01 01:01:51, working on split 69/165, extracting data in RAM of 1 split elements, totalling, 0.04302 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:01:57, ... applying FUN to selected data
+2014-11-01 01:01:57, ... appending result to the output ffdf
+2014-11-01 01:01:57, working on split 70/165, extracting data in RAM of 1 split elements, totalling, 0.04272 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:02, ... applying FUN to selected data
+2014-11-01 01:02:02, ... appending result to the output ffdf
+2014-11-01 01:02:02, working on split 71/165, extracting data in RAM of 1 split elements, totalling, 0.04174 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:10, ... applying FUN to selected data
+2014-11-01 01:02:11, ... appending result to the output ffdf
+2014-11-01 01:02:11, working on split 72/165, extracting data in RAM of 1 split elements, totalling, 0.0411 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:15, ... applying FUN to selected data
+2014-11-01 01:02:15, ... appending result to the output ffdf
+2014-11-01 01:02:15, working on split 73/165, extracting data in RAM of 1 split elements, totalling, 0.03977 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:21, ... applying FUN to selected data
+2014-11-01 01:02:21, ... appending result to the output ffdf
+2014-11-01 01:02:22, working on split 74/165, extracting data in RAM of 1 split elements, totalling, 0.03875 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:24, ... applying FUN to selected data
+2014-11-01 01:02:24, ... appending result to the output ffdf
+2014-11-01 01:02:24, working on split 75/165, extracting data in RAM of 1 split elements, totalling, 0.03642 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:27, ... applying FUN to selected data
+2014-11-01 01:02:27, ... appending result to the output ffdf
+2014-11-01 01:02:27, working on split 76/165, extracting data in RAM of 1 split elements, totalling, 0.03567 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:32, ... applying FUN to selected data
+2014-11-01 01:02:33, ... appending result to the output ffdf
+2014-11-01 01:02:33, working on split 77/165, extracting data in RAM of 1 split elements, totalling, 0.03163 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:38, ... applying FUN to selected data
+2014-11-01 01:02:38, ... appending result to the output ffdf
+2014-11-01 01:02:38, working on split 78/165, extracting data in RAM of 1 split elements, totalling, 0.029 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:42, ... applying FUN to selected data
+2014-11-01 01:02:42, ... appending result to the output ffdf
+2014-11-01 01:02:42, working on split 79/165, extracting data in RAM of 1 split elements, totalling, 0.02843 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:45, ... applying FUN to selected data
+2014-11-01 01:02:45, ... appending result to the output ffdf
+2014-11-01 01:02:45, working on split 80/165, extracting data in RAM of 1 split elements, totalling, 0.02618 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:47, ... applying FUN to selected data
+2014-11-01 01:02:47, ... appending result to the output ffdf
+2014-11-01 01:02:47, working on split 81/165, extracting data in RAM of 1 split elements, totalling, 0.02595 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:49, ... applying FUN to selected data
+2014-11-01 01:02:49, ... appending result to the output ffdf
+2014-11-01 01:02:49, working on split 82/165, extracting data in RAM of 1 split elements, totalling, 0.02567 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:52, ... applying FUN to selected data
+2014-11-01 01:02:52, ... appending result to the output ffdf
+2014-11-01 01:02:52, working on split 83/165, extracting data in RAM of 1 split elements, totalling, 0.0242 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:54, ... applying FUN to selected data
+2014-11-01 01:02:54, ... appending result to the output ffdf
+2014-11-01 01:02:54, working on split 84/165, extracting data in RAM of 1 split elements, totalling, 0.02404 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:56, ... applying FUN to selected data
+2014-11-01 01:02:56, ... appending result to the output ffdf
+2014-11-01 01:02:56, working on split 85/165, extracting data in RAM of 1 split elements, totalling, 0.02271 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:02:59, ... applying FUN to selected data
+2014-11-01 01:02:59, ... appending result to the output ffdf
+2014-11-01 01:02:59, working on split 86/165, extracting data in RAM of 1 split elements, totalling, 0.02162 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:01, ... applying FUN to selected data
+2014-11-01 01:03:01, ... appending result to the output ffdf
+2014-11-01 01:03:01, working on split 87/165, extracting data in RAM of 1 split elements, totalling, 0.02159 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:02, ... applying FUN to selected data
+2014-11-01 01:03:02, ... appending result to the output ffdf
+2014-11-01 01:03:02, working on split 88/165, extracting data in RAM of 1 split elements, totalling, 0.02053 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:04, ... applying FUN to selected data
+2014-11-01 01:03:04, ... appending result to the output ffdf
+2014-11-01 01:03:04, working on split 89/165, extracting data in RAM of 1 split elements, totalling, 0.02008 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:06, ... applying FUN to selected data
+2014-11-01 01:03:06, ... appending result to the output ffdf
+2014-11-01 01:03:06, working on split 90/165, extracting data in RAM of 1 split elements, totalling, 0.01873 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:09, ... applying FUN to selected data
+2014-11-01 01:03:09, ... appending result to the output ffdf
+2014-11-01 01:03:09, working on split 91/165, extracting data in RAM of 1 split elements, totalling, 0.01813 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:10, ... applying FUN to selected data
+2014-11-01 01:03:11, ... appending result to the output ffdf
+2014-11-01 01:03:11, working on split 92/165, extracting data in RAM of 1 split elements, totalling, 0.01807 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:12, ... applying FUN to selected data
+2014-11-01 01:03:12, ... appending result to the output ffdf
+2014-11-01 01:03:12, working on split 93/165, extracting data in RAM of 1 split elements, totalling, 0.01805 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:14, ... applying FUN to selected data
+2014-11-01 01:03:14, ... appending result to the output ffdf
+2014-11-01 01:03:14, working on split 94/165, extracting data in RAM of 1 split elements, totalling, 0.01777 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:16, ... applying FUN to selected data
+2014-11-01 01:03:16, ... appending result to the output ffdf
+2014-11-01 01:03:16, working on split 95/165, extracting data in RAM of 1 split elements, totalling, 0.01746 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:18, ... applying FUN to selected data
+2014-11-01 01:03:18, ... appending result to the output ffdf
+2014-11-01 01:03:18, working on split 96/165, extracting data in RAM of 1 split elements, totalling, 0.01715 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:20, ... applying FUN to selected data
+2014-11-01 01:03:20, ... appending result to the output ffdf
+2014-11-01 01:03:20, working on split 97/165, extracting data in RAM of 1 split elements, totalling, 0.01713 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:21, ... applying FUN to selected data
+2014-11-01 01:03:21, ... appending result to the output ffdf
+2014-11-01 01:03:21, working on split 98/165, extracting data in RAM of 1 split elements, totalling, 0.01699 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:23, ... applying FUN to selected data
+2014-11-01 01:03:23, ... appending result to the output ffdf
+2014-11-01 01:03:23, working on split 99/165, extracting data in RAM of 1 split elements, totalling, 0.01687 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:24, ... applying FUN to selected data
+2014-11-01 01:03:24, ... appending result to the output ffdf
+2014-11-01 01:03:24, working on split 100/165, extracting data in RAM of 1 split elements, totalling, 0.01687 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:26, ... applying FUN to selected data
+2014-11-01 01:03:26, ... appending result to the output ffdf
+2014-11-01 01:03:26, working on split 101/165, extracting data in RAM of 1 split elements, totalling, 0.01614 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:27, ... applying FUN to selected data
+2014-11-01 01:03:28, ... appending result to the output ffdf
+2014-11-01 01:03:28, working on split 102/165, extracting data in RAM of 1 split elements, totalling, 0.01609 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:29, ... applying FUN to selected data
+2014-11-01 01:03:29, ... appending result to the output ffdf
+2014-11-01 01:03:29, working on split 103/165, extracting data in RAM of 1 split elements, totalling, 0.01584 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:31, ... applying FUN to selected data
+2014-11-01 01:03:31, ... appending result to the output ffdf
+2014-11-01 01:03:31, working on split 104/165, extracting data in RAM of 1 split elements, totalling, 0.0148 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:32, ... applying FUN to selected data
+2014-11-01 01:03:32, ... appending result to the output ffdf
+2014-11-01 01:03:32, working on split 105/165, extracting data in RAM of 1 split elements, totalling, 0.01431 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:34, ... applying FUN to selected data
+2014-11-01 01:03:34, ... appending result to the output ffdf
+2014-11-01 01:03:34, working on split 106/165, extracting data in RAM of 1 split elements, totalling, 0.01412 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:35, ... applying FUN to selected data
+2014-11-01 01:03:35, ... appending result to the output ffdf
+2014-11-01 01:03:35, working on split 107/165, extracting data in RAM of 1 split elements, totalling, 0.01401 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:37, ... applying FUN to selected data
+2014-11-01 01:03:37, ... appending result to the output ffdf
+2014-11-01 01:03:37, working on split 108/165, extracting data in RAM of 1 split elements, totalling, 0.01397 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:38, ... applying FUN to selected data
+2014-11-01 01:03:38, ... appending result to the output ffdf
+2014-11-01 01:03:38, working on split 109/165, extracting data in RAM of 1 split elements, totalling, 0.01356 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:39, ... applying FUN to selected data
+2014-11-01 01:03:39, ... appending result to the output ffdf
+2014-11-01 01:03:39, working on split 110/165, extracting data in RAM of 1 split elements, totalling, 0.01329 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:41, ... applying FUN to selected data
+2014-11-01 01:03:41, ... appending result to the output ffdf
+2014-11-01 01:03:41, working on split 111/165, extracting data in RAM of 1 split elements, totalling, 0.01328 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:42, ... applying FUN to selected data
+2014-11-01 01:03:42, ... appending result to the output ffdf
+2014-11-01 01:03:42, working on split 112/165, extracting data in RAM of 1 split elements, totalling, 0.01296 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:43, ... applying FUN to selected data
+2014-11-01 01:03:43, ... appending result to the output ffdf
+2014-11-01 01:03:43, working on split 113/165, extracting data in RAM of 1 split elements, totalling, 0.01292 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:44, ... applying FUN to selected data
+2014-11-01 01:03:44, ... appending result to the output ffdf
+2014-11-01 01:03:44, working on split 114/165, extracting data in RAM of 1 split elements, totalling, 0.01253 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:45, ... applying FUN to selected data
+2014-11-01 01:03:45, ... appending result to the output ffdf
+2014-11-01 01:03:45, working on split 115/165, extracting data in RAM of 1 split elements, totalling, 0.01197 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:47, ... applying FUN to selected data
+2014-11-01 01:03:47, ... appending result to the output ffdf
+2014-11-01 01:03:47, working on split 116/165, extracting data in RAM of 1 split elements, totalling, 0.01111 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:48, ... applying FUN to selected data
+2014-11-01 01:03:48, ... appending result to the output ffdf
+2014-11-01 01:03:48, working on split 117/165, extracting data in RAM of 1 split elements, totalling, 0.01106 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:49, ... applying FUN to selected data
+2014-11-01 01:03:49, ... appending result to the output ffdf
+2014-11-01 01:03:49, working on split 118/165, extracting data in RAM of 1 split elements, totalling, 0.01078 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:50, ... applying FUN to selected data
+2014-11-01 01:03:50, ... appending result to the output ffdf
+2014-11-01 01:03:50, working on split 119/165, extracting data in RAM of 1 split elements, totalling, 0.00999 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:51, ... applying FUN to selected data
+2014-11-01 01:03:51, ... appending result to the output ffdf
+2014-11-01 01:03:51, working on split 120/165, extracting data in RAM of 1 split elements, totalling, 0.00963 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:52, ... applying FUN to selected data
+2014-11-01 01:03:52, ... appending result to the output ffdf
+2014-11-01 01:03:52, working on split 121/165, extracting data in RAM of 1 split elements, totalling, 0.00959 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:53, ... applying FUN to selected data
+2014-11-01 01:03:53, ... appending result to the output ffdf
+2014-11-01 01:03:53, working on split 122/165, extracting data in RAM of 1 split elements, totalling, 0.00941 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:54, ... applying FUN to selected data
+2014-11-01 01:03:54, ... appending result to the output ffdf
+2014-11-01 01:03:54, working on split 123/165, extracting data in RAM of 1 split elements, totalling, 0.00936 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:55, ... applying FUN to selected data
+2014-11-01 01:03:55, ... appending result to the output ffdf
+2014-11-01 01:03:55, working on split 124/165, extracting data in RAM of 1 split elements, totalling, 0.00907 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:56, ... applying FUN to selected data
+2014-11-01 01:03:56, ... appending result to the output ffdf
+2014-11-01 01:03:56, working on split 125/165, extracting data in RAM of 1 split elements, totalling, 0.00895 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:57, ... applying FUN to selected data
+2014-11-01 01:03:57, ... appending result to the output ffdf
+2014-11-01 01:03:57, working on split 126/165, extracting data in RAM of 1 split elements, totalling, 0.00873 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:58, ... applying FUN to selected data
+2014-11-01 01:03:58, ... appending result to the output ffdf
+2014-11-01 01:03:58, working on split 127/165, extracting data in RAM of 1 split elements, totalling, 0.00856 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:03:59, ... applying FUN to selected data
+2014-11-01 01:03:59, ... appending result to the output ffdf
+2014-11-01 01:03:59, working on split 128/165, extracting data in RAM of 1 split elements, totalling, 0.00836 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:00, ... applying FUN to selected data
+2014-11-01 01:04:00, ... appending result to the output ffdf
+2014-11-01 01:04:00, working on split 129/165, extracting data in RAM of 1 split elements, totalling, 0.00832 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:01, ... applying FUN to selected data
+2014-11-01 01:04:01, ... appending result to the output ffdf
+2014-11-01 01:04:01, working on split 130/165, extracting data in RAM of 1 split elements, totalling, 0.00813 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:02, ... applying FUN to selected data
+2014-11-01 01:04:02, ... appending result to the output ffdf
+2014-11-01 01:04:02, working on split 131/165, extracting data in RAM of 1 split elements, totalling, 0.00801 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:03, ... applying FUN to selected data
+2014-11-01 01:04:03, ... appending result to the output ffdf
+2014-11-01 01:04:03, working on split 132/165, extracting data in RAM of 2 split elements, totalling, 0.01559 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:05, ... applying FUN to selected data
+2014-11-01 01:04:05, ... appending result to the output ffdf
+2014-11-01 01:04:05, working on split 133/165, extracting data in RAM of 2 split elements, totalling, 0.01517 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:06, ... applying FUN to selected data
+2014-11-01 01:04:06, ... appending result to the output ffdf
+2014-11-01 01:04:06, working on split 134/165, extracting data in RAM of 2 split elements, totalling, 0.01476 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:07, ... applying FUN to selected data
+2014-11-01 01:04:07, ... appending result to the output ffdf
+2014-11-01 01:04:07, working on split 135/165, extracting data in RAM of 2 split elements, totalling, 0.01456 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:09, ... applying FUN to selected data
+2014-11-01 01:04:09, ... appending result to the output ffdf
+2014-11-01 01:04:09, working on split 136/165, extracting data in RAM of 2 split elements, totalling, 0.01419 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:10, ... applying FUN to selected data
+2014-11-01 01:04:10, ... appending result to the output ffdf
+2014-11-01 01:04:10, working on split 137/165, extracting data in RAM of 2 split elements, totalling, 0.01392 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:11, ... applying FUN to selected data
+2014-11-01 01:04:12, ... appending result to the output ffdf
+2014-11-01 01:04:12, working on split 138/165, extracting data in RAM of 2 split elements, totalling, 0.01317 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:13, ... applying FUN to selected data
+2014-11-01 01:04:13, ... appending result to the output ffdf
+2014-11-01 01:04:13, working on split 139/165, extracting data in RAM of 2 split elements, totalling, 0.013 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:14, ... applying FUN to selected data
+2014-11-01 01:04:14, ... appending result to the output ffdf
+2014-11-01 01:04:14, working on split 140/165, extracting data in RAM of 2 split elements, totalling, 0.0126 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:15, ... applying FUN to selected data
+2014-11-01 01:04:15, ... appending result to the output ffdf
+2014-11-01 01:04:15, working on split 141/165, extracting data in RAM of 2 split elements, totalling, 0.01242 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:16, ... applying FUN to selected data
+2014-11-01 01:04:17, ... appending result to the output ffdf
+2014-11-01 01:04:17, working on split 142/165, extracting data in RAM of 2 split elements, totalling, 0.01224 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:18, ... applying FUN to selected data
+2014-11-01 01:04:18, ... appending result to the output ffdf
+2014-11-01 01:04:18, working on split 143/165, extracting data in RAM of 2 split elements, totalling, 0.01204 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:19, ... applying FUN to selected data
+2014-11-01 01:04:19, ... appending result to the output ffdf
+2014-11-01 01:04:19, working on split 144/165, extracting data in RAM of 2 split elements, totalling, 0.01176 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:20, ... applying FUN to selected data
+2014-11-01 01:04:20, ... appending result to the output ffdf
+2014-11-01 01:04:20, working on split 145/165, extracting data in RAM of 2 split elements, totalling, 0.0115 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:21, ... applying FUN to selected data
+2014-11-01 01:04:21, ... appending result to the output ffdf
+2014-11-01 01:04:21, working on split 146/165, extracting data in RAM of 2 split elements, totalling, 0.01102 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:22, ... applying FUN to selected data
+2014-11-01 01:04:22, ... appending result to the output ffdf
+2014-11-01 01:04:22, working on split 147/165, extracting data in RAM of 2 split elements, totalling, 0.01057 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:23, ... applying FUN to selected data
+2014-11-01 01:04:23, ... appending result to the output ffdf
+2014-11-01 01:04:23, working on split 148/165, extracting data in RAM of 3 split elements, totalling, 0.01559 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:24, ... applying FUN to selected data
+2014-11-01 01:04:24, ... appending result to the output ffdf
+2014-11-01 01:04:24, working on split 149/165, extracting data in RAM of 3 split elements, totalling, 0.01455 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:26, ... applying FUN to selected data
+2014-11-01 01:04:26, ... appending result to the output ffdf
+2014-11-01 01:04:26, working on split 150/165, extracting data in RAM of 3 split elements, totalling, 0.01339 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:27, ... applying FUN to selected data
+2014-11-01 01:04:27, ... appending result to the output ffdf
+2014-11-01 01:04:27, working on split 151/165, extracting data in RAM of 3 split elements, totalling, 0.01195 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:28, ... applying FUN to selected data
+2014-11-01 01:04:28, ... appending result to the output ffdf
+2014-11-01 01:04:28, working on split 152/165, extracting data in RAM of 4 split elements, totalling, 0.01524 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:29, ... applying FUN to selected data
+2014-11-01 01:04:29, ... appending result to the output ffdf
+2014-11-01 01:04:29, working on split 153/165, extracting data in RAM of 4 split elements, totalling, 0.01357 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:31, ... applying FUN to selected data
+2014-11-01 01:04:31, ... appending result to the output ffdf
+2014-11-01 01:04:31, working on split 154/165, extracting data in RAM of 5 split elements, totalling, 0.01498 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:32, ... applying FUN to selected data
+2014-11-01 01:04:32, ... appending result to the output ffdf
+2014-11-01 01:04:32, working on split 155/165, extracting data in RAM of 5 split elements, totalling, 0.01408 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:33, ... applying FUN to selected data
+2014-11-01 01:04:33, ... appending result to the output ffdf
+2014-11-01 01:04:33, working on split 156/165, extracting data in RAM of 6 split elements, totalling, 0.01534 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:34, ... applying FUN to selected data
+2014-11-01 01:04:35, ... appending result to the output ffdf
+2014-11-01 01:04:35, working on split 157/165, extracting data in RAM of 6 split elements, totalling, 0.0138 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:35, ... applying FUN to selected data
+2014-11-01 01:04:35, ... appending result to the output ffdf
+2014-11-01 01:04:36, working on split 158/165, extracting data in RAM of 7 split elements, totalling, 0.01489 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:37, ... applying FUN to selected data
+2014-11-01 01:04:37, ... appending result to the output ffdf
+2014-11-01 01:04:37, working on split 159/165, extracting data in RAM of 7 split elements, totalling, 0.01392 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:38, ... applying FUN to selected data
+2014-11-01 01:04:38, ... appending result to the output ffdf
+2014-11-01 01:04:38, working on split 160/165, extracting data in RAM of 8 split elements, totalling, 0.01466 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:39, ... applying FUN to selected data
+2014-11-01 01:04:39, ... appending result to the output ffdf
+2014-11-01 01:04:39, working on split 161/165, extracting data in RAM of 10 split elements, totalling, 0.0156 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:40, ... applying FUN to selected data
+2014-11-01 01:04:41, ... appending result to the output ffdf
+2014-11-01 01:04:41, working on split 162/165, extracting data in RAM of 12 split elements, totalling, 0.01497 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:41, ... applying FUN to selected data
+2014-11-01 01:04:41, ... appending result to the output ffdf
+2014-11-01 01:04:41, working on split 163/165, extracting data in RAM of 17 split elements, totalling, 0.01548 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:43, ... applying FUN to selected data
+2014-11-01 01:04:43, ... appending result to the output ffdf
+2014-11-01 01:04:43, working on split 164/165, extracting data in RAM of 26 split elements, totalling, 0.01537 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:44, ... applying FUN to selected data
+2014-11-01 01:04:44, ... appending result to the output ffdf
+2014-11-01 01:04:44, working on split 165/165, extracting data in RAM of 55 split elements, totalling, 0.00529 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-11-01 01:04:45, ... applying FUN to selected data
+2014-11-01 01:04:45, ... appending result to the output ffdf
+
+ *** caught bus error ***
+address 0x7f4febd05000, cause 'non-existent physical address'
+
+Traceback:
+ 1: ffindexget(x = x[[measure]], index = index, indexorder = o)
+ 2: ffbaseffdfindexget(x, index = updatepositions, ...)
+ 3: merge.ffdf(dat_subset, num_departing_flights, by = "Origin")
+ 4: merge(dat_subset, num_departing_flights, by = "Origin")
+ 5: system.time({    num_departing_flights <- ffdfdply(x = dat, split = as.character(dat$Origin),         FUN = function(x) summaryBy(Origin ~ Origin, data = x,             FUN = sum, keep.names = FALSE))    dat_merged <- merge(dat_subset, num_departing_flights, by = "Origin")    select_num_departures <- dat_merged$Origin.sum > 1e+06    indices_select_num_departures <- ffwhich(select_num_departures,         select_num_departures == TRUE)    dat_merged_subset <- dat_merged[indices_select_num_departures,         ]    select_top20 <- fforder(dat_merged_subset$DepDelay, decreasing = TRUE) <=         20    indices_top20 <- ffwhich(select_top20, select_top20 == TRUE)    dat_top20 <- dat_merged_subset[indices_top20, ]})
+aborting ...
+Bus error (core dumped)

@@ -1,0 +1,56 @@
+# Copy from local to server
+scp -i ~/.ssh/stat243-fall-2014-ssh_key.pem ~/Copy/Berkeley/stat243/ps6/ps6.R ubuntu@54.187.216.207:~/ps6
+# scp -i ~/.ssh/stat243-fall-2014-ssh_key.pem ~/Copy/Berkeley/stat243/ps6/ps6-redo.R ubuntu@54.187.216.207:~/ps6
+# scp -i ~/.ssh/stat243-fall-2014-ssh_key.pem ~/.rpushbullet.json ubuntu@54.187.216.207:~/
+# Copy from server to local
+scp -i ~/.ssh/stat243-fall-2014-ssh_key.pem ubuntu@54.187.216.207:~/ps6/*Rout ~/Copy/Berkeley/stat243/ps6/procdata/.
+scp -i ~/.ssh/stat243-fall-2014-ssh_key.pem ubuntu@54.187.216.207:~/ps6/procdata/unix-systime.txt ~/Copy/Berkeley/stat243/ps6/procdata/.
+# Type Enter ~ . to close connection to server
+#======================================================================
+# SSH into Amazon
+ssh -i ~/.ssh/stat243-fall-2014-ssh_key.pem ubuntu@54.187.216.207
+cd ps6
+TMPDIR=/mnt/airline nohup R CMD BATCH ps6.R &
+# OR
+# export TMPDIR=/mnt/airline
+# nohup R CMD BATCH ps6.R & 
+./ps6.sh &
+ps -u ubuntu
+
+# # Make a directory in /mnt that the ubuntu user can access
+# sudo mkdir /mnt/airline 
+# sudo chown -R ubuntu /mnt/airline
+#======================================================================
+# Spark
+stat243hw
+export AWS_ACCESS_KEY_ID=`grep aws_access_key_id stat243-fall-2014-credentials.boto | cut -d' ' -f3`
+export AWS_SECRET_ACCESS_KEY=`grep aws_secret_access_key stat243-fall-2014-credentials.boto | cut -d' ' -f3`
+chmod 400 ~/.ssh/stat243-fall-2014-ssh_key.pem
+
+cd ~/Documents/spark-1.1.0/ec2
+export NUMBER_OF_WORKERS=12
+./spark-ec2 -k jrnew@berkeley.edu:stat243-fall-2014 -i ~/.ssh/stat243-fall-2014-ssh_key.pem --region=us-west-2 -w 300 -s ${NUMBER_OF_WORKERS} -v 1.1.0 launch sparkvm-jrjr
+
+# Once it has finished (it will take 5-15 minutes), you can login as follows:
+./spark-ec2 -k jrnew@berkeley.edu:stat243-fall-2014 -i ~/.ssh/stat243-fall-2014-ssh_key.pem --region=us-west-2 login sparkvm-jrjr
+
+export PATH=$PATH:/root/ephemeral-hdfs/bin/
+hadoop fs -mkdir /data
+hadoop fs -mkdir /data/airline
+# hadoop fs -mkdir /mnt
+# hadoop fs -mkdir /mnt/airline
+# df -h
+
+## Download files and unzip
+wget http://www.stat.berkeley.edu/share/paciorek/1987-2008.csvs.tgz
+tar zxvf 1987-2008.csvs.tgz
+hadoop fs -copyFromLocal ~/*bz2 /data/airline
+hadoop fs -ls /data/airline
+
+# Start Spark's Python interface as interactive session
+export PATH=${PATH}:/root/spark/bin
+pyspark
+
+# Delete spark cluster when done
+./spark-ec2 --region=us-west-2 --delete-groups destroy sparkvm-jrjr
+

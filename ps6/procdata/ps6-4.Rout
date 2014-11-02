@@ -1,0 +1,417 @@
+
+R version 3.0.2 (2013-09-25) -- "Frisbee Sailing"
+Copyright (C) 2013 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> rm(list = ls())
+> # setwd("~/Copy/Berkeley/stat243/ps6")
+> library(RSQLite)
+Loading required package: DBI
+> # library(RSQLite.extfuns)
+> library(ff)
+Loading required package: bit
+Attaching package bit
+package:bit (c) 2008-2012 Jens Oehlschlaegel (GPL-2)
+creators: bit bitwhich
+coercion: as.logical as.integer as.bit as.bitwhich which
+operator: ! & | xor != ==
+querying: print length any all min max range sum summary
+bit access: length<- [ [<- [[ [[<-
+for more help type ?bit
+
+Attaching package: ‘bit’
+
+The following object is masked from ‘package:base’:
+
+    xor
+
+Attaching package ff
+- getOption("fftempdir")=="/tmp/RtmpOpAA7q"
+
+- getOption("ffextension")=="ff"
+
+- getOption("ffdrop")==TRUE
+
+- getOption("fffinonexit")==TRUE
+
+- getOption("ffpagesize")==65536
+
+- getOption("ffcaching")=="mmnoflush"  -- consider "ffeachflush" if your system stalls on large writes
+
+- getOption("ffbatchbytes")==16777216 -- consider a different value for tuning your system
+
+- getOption("ffmaxbytes")==536870912 -- consider a different value for tuning your system
+
+
+Attaching package: ‘ff’
+
+The following objects are masked from ‘package:bit’:
+
+    clone, clone.default, clone.list
+
+The following objects are masked from ‘package:utils’:
+
+    write.csv, write.csv2
+
+The following objects are masked from ‘package:base’:
+
+    is.factor, is.ordered
+
+> library(ffbase)
+
+Attaching package: ‘ffbase’
+
+The following objects are masked from ‘package:ff’:
+
+    [<-.ff, [.ff
+
+The following objects are masked from ‘package:base’:
+
+    %in%, table
+
+> library(foreach)
+> library(doParallel)
+Loading required package: iterators
+Loading required package: parallel
+> library(iterators)
+> library(doBy)
+Loading required package: survival
+Loading required package: splines
+Loading required package: MASS
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following object is masked from ‘package:bit’:
+
+    setattr
+
+> #----------------------------------------------------------------------
+> get_notifications <- TRUE
+> if (get_notifications) {
++   library(RPushbullet)
++   options(error = function() { # Be notified when there is an error
++     pbPost(type = "note", 
++            title = "Error!", 
++            body = geterrmessage(),
++            recipients = c(1, 2))
++   })
++ }
+Attaching RPushbullet version 0.1.0.
+Reading ~/.rpushbullet.json
+> #----------------------------------------------------------------------
+> data_dir <- "data"
+> procdata_dir <- "procdata"
+> dir.create(data_dir, showWarnings = FALSE)
+> dir.create(procdata_dir, showWarnings = FALSE)
+> years <- 1987:2008
+> if (FALSE) {
++ #======================================================================
++ # Question 1
++ # Download all bz2 files
++ for (year in years) {
++   data_filepath <- paste0(year,".csv.bz2")
++   if (!file.exists(file.path(data_dir, data_filepath)))
++     download.file(paste0("http://www.stat.berkeley.edu/share/paciorek/", data_filepath),
++                   file.path(data_dir, data_filepath))
++ }
++ if (!file.exists(file.path(procdata_dir, "flights.db"))) {
++   db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++   col_classes <- c("integer", rep("factor", 3), rep("integer", 4), 
++                    "factor", "integer", "factor", rep("integer", 5), rep("factor", 2),
++                    rep("integer", 4), "factor", rep("integer", 6))
++   for (year in years) {
++     is_first_file <- year == years[1]
++     data_filepath <- paste0(year,".csv.bz2")
++     con <- bzfile(file.path(data_dir, data_filepath), "rt")
++     data <- read.csv(con, header = TRUE, colClasses = col_classes)
++     data$DepDelay[is.na(data$DepDelay)] <- -9999
++     dbWriteTable(conn = db, name = "flights", value = data,
++                  row.names = FALSE, append = !is_first_file)
++   }
++   dbDisconnect(db)
++   closeAllConnections()
++ }
++ #======================================================================
++ # Question 2
++ # (a) and (b) with SQLite
++ db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++ 
++ # Subset flights data
++ if (!("flights_subset" %in% dbListTables(db))) {
++   viewquery <- "create view flights_subset as select * from flights where DepDelay >= -30 and DepDelay <= 720"
++   dbGetQuery(db, viewquery)
++ }
++ 
++ # Extract flights departing from SFO or OAK
++ system.time({
++   query1 <- "select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"
++   flights_bayarea <- dbGetQuery(db, query1)
++ })
++ 
++ # Find mean/median departure delay by airport
++ system.time({
++   query2 <- "select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"
++   depdelay_mean <- dbGetQuery(db, query2)
++ })
++ 
++ # Notes: Requires RSQLite.extfuns which is not available for R 3.0.2 on AWS
++ # init_extensions(db)
++ # system.time({
++ #   query3 <- "select Origin, median(DepDelay) as medianDepDelay from flights_subset group by Origin"
++ #   depdelay_median <- dbGetQuery(db, query3)
++ # })
++ 
++ if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2a/b for SQLite done!"),
++          recipients = c(1, 2))
++ }
++ 
++ # Check that flights were correctly extracted and means/medians calculated
++ unique(flights_bayarea$Origin)
++ head(depdelay_mean)
++ # head(depdelay_median)
++ dbDisconnect(db)
++ }
+> #----------------------------------------------------------------------
+> # (c)
+> # Add index to Origin
+> if (!file.exists(file.path(procdata_dir, "flights-indexed.db")))
++   file.copy(file.path(procdata_dir, "flights.db"), file.path(procdata_dir, "flights-indexed.db"))
+> db_indexed <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights-indexed.db"))
+> indexquery <- "create index OriginID on flights(Origin)"
+> try(dbGetQuery(db_indexed, indexquery)) # Ad-hoc
+Error in sqliteSendQuery(con, statement, bind.data) : 
+  error in statement: index OriginID already exists
+> 
+> if (!("flights_subset" %in% dbListTables(db_indexed))) {
++   # Subset flights data
++   viewquery <- "create view flights_subset as select * from flights where DepDelay >= -30 and DepDelay <= 720"
++   dbGetQuery(db_indexed, viewquery)
++ }
+> 
+> # Extract flights departing from SFO or OAK
+> system.time({
++   query1 <- "select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"
++   flights_bayarea2 <- dbGetQuery(db_indexed, query1)
++ })
+   user  system elapsed 
+ 23.983   1.924  94.148 
+> 
+> # Find mean/median departure delay by airport
+> system.time({
++   query2 <- "select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"
++   depdelay_mean2 <- dbGetQuery(db_indexed, query2)
++ })
+    user   system  elapsed 
+ 134.358   31.064 2613.296 
+> 
+> # init_extensions(db_indexed)
+> # system.time({
+> #   query3 <- "select Origin, median(DepDelay) as medianDepDelay from flights_subset group by Origin"
+> #   depdelay_median2 <- dbGetQuery(db_indexed, query3)
+> # })
+> 
+> if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2c for SQLite done!"),
++          recipients = c(1, 2))
++ }
+> 
+> # Check that flights were correctly extracted and means/medians calculated
+> unique(flights_bayarea2$Origin)
+[1] "OAK" "SFO"
+> head(depdelay_mean2)
+  Origin meanDepDelay
+1    ABE     5.030564
+2    ABI     3.771792
+3    ABQ     6.706767
+4    ABY     9.895705
+5    ACK    27.383212
+6    ACT     1.500635
+> # head(depdelay_median)
+> dbDisconnect(db_indexed)
+[1] TRUE
+> #----------------------------------------------------------------------
+> # (d)
+> # Find mean departure delay by airport (in parallel)
+> db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights-indexed.db"))
+> num_cores <- 4
+> registerDoParallel(num_cores)
+> query <- "select Origin from flights_subset"
+> airports <- unique(dbGetQuery(db, query)[[1]])
+> system.time({
++   depdelay_mean3 <- foreach(airport = airports, .combine = rbind) %dopar% {
++     db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++     query <- paste0("select Origin, avg(DepDelay) as meanDepDelay ",
++                     "from flights_subset where Origin = '", airport ,"'")
++     mean_temp <- dbGetQuery(db, query)
++   }
++ })
+     user    system   elapsed 
+13073.535  3790.160  6359.196 
+> 
+> if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2d for SQLite done!"),
++          recipients = c(1, 2))
++ }
+> 
+> # Check that flights were correctly extracted and means/medians calculated
+> head(depdelay_mean3)
+  Origin meanDepDelay
+1    SAN     6.929459
+2    SFO     9.603553
+3    BUR     6.695564
+4    OAK     7.289731
+5    LAX     7.956537
+6    PHX     8.911071
+> dbDisconnect(db)
+[1] TRUE
+> #----------------------------------------------------------------------
+> # (a) and (b) with ff
+> # Download all ff files
+> data_filepaths <- c("AirlineDataAll.ffData", "AirlineDataAll.RData")
+> for (data_filepath in data_filepaths) {
++   if (!file.exists(file.path(data_dir, data_filepath)))
++     download.file(paste0("http://www.stat.berkeley.edu/share/paciorek/", data_filepath),
++                   file.path(data_dir, data_filepath))
++ }
+> ffload(file.path(data_dir, "AirlineDataAll"))
+character(0)
+There were 29 warnings (use warnings() to see them)
+> 
+> # Ad-hoc/temp
+> # ffload(file.path(data_dir, "temp/AirlineDataAll"))
+> 
+> # Subset flights data
+> select <- dat$DepDelay >= -30 & dat$DepDelay <= 720 & !is.na(dat$DepDelay)
+opening ff /tmp/RtmpU5Uw6z/ffdf4e682d8cd893.ff
+> indices_select <- ffwhich(select, select == TRUE)
+> dat_subset <- dat[indices_select, ]
+opening ff /tmp/RtmpU5Uw6z/ffdf4e684aecd7c4.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e687fb73a88.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6862b1033f.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6820053932.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e681e7d2235.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e686aa01c8.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6829316931.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6857ad931e.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e686bade869.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e682bd3dfd1.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e68371c2afa.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6852a6f8c9.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e685c89591d.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e682780692.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e684d1cc9df.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6859caeda9.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e681c4fde5f.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e68264d0b86.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e68e9b07f4.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e68358283ef.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e68718ce4c3.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6814fa5981.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6856883d5d.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e687a077481.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e684469a1f3.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e685eedc1e5.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e6814973178.ff
+opening ff /tmp/RtmpU5Uw6z/ffdf4e683d69fd12.ff
+> 
+> # Extract flights departing from SFO or OAK
+> # Note: is.element() and %in% do not work with ffvectors
+> system.time({
++   select_bayarea <- dat_subset$Origin == "SFO" | dat_subset$Origin == "OAK"
++   indices_select_bayarea <- ffwhich(select_bayarea, select_bayarea == TRUE)
++   flights_bayarea <- dat_subset[indices_select_bayarea, ]
++ })
+   user  system elapsed 
+ 31.585   6.319 247.643 
+> 
+> # Find mean/median departure delay by airport
+> system.time({
++   depdelay_mean <- ffdfdply(x = dat_subset, split = as.character(dat_subset$Origin),
++                             FUN = function(x) {                             
++                               dt <- data.table(x)
++                               dt[, list(meanDepDelay = mean(DepDelay)), by = Origin]
++                             })
++ })
+2014-10-31 11:50:31, calculating split sizes
+2014-10-31 11:50:36, building up split locations
+2014-10-31 11:53:17, working on split 1/164, extracting data in RAM of 1 split elements, totalling, 0.691 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 11:56:49, ... applying FUN to selected data
+2014-10-31 11:56:52, ... appending result to the output ffdf
+2014-10-31 11:56:52, working on split 2/164, extracting data in RAM of 1 split elements, totalling, 0.64746 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 12:00:20, ... applying FUN to selected data
+2014-10-31 12:00:21, ... appending result to the output ffdf
+2014-10-31 12:00:21, working on split 3/164, extracting data in RAM of 1 split elements, totalling, 0.60566 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 12:05:11, ... applying FUN to selected data
+2014-10-31 12:05:12, ... appending result to the output ffdf
+2014-10-31 12:05:12, working on split 4/164, extracting data in RAM of 1 split elements, totalling, 0.43411 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 12:23:11, ... applying FUN to selected data
+2014-10-31 12:23:12, ... appending result to the output ffdf
+2014-10-31 12:23:12, working on split 5/164, extracting data in RAM of 1 split elements, totalling, 0.37288 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 12:40:47, ... applying FUN to selected data
+2014-10-31 12:40:48, ... appending result to the output ffdf
+2014-10-31 12:40:48, working on split 6/164, extracting data in RAM of 1 split elements, totalling, 0.35361 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 12:57:30, ... applying FUN to selected data
+2014-10-31 12:57:31, ... appending result to the output ffdf
+2014-10-31 12:57:31, working on split 7/164, extracting data in RAM of 1 split elements, totalling, 0.31454 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 13:15:18, ... applying FUN to selected data
+2014-10-31 13:15:18, ... appending result to the output ffdf
+2014-10-31 13:15:18, working on split 8/164, extracting data in RAM of 1 split elements, totalling, 0.30812 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 13:32:04, ... applying FUN to selected data
+2014-10-31 13:32:05, ... appending result to the output ffdf
+2014-10-31 13:32:05, working on split 9/164, extracting data in RAM of 1 split elements, totalling, 0.29154 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 13:48:55, ... applying FUN to selected data
+2014-10-31 13:48:56, ... appending result to the output ffdf
+2014-10-31 13:48:56, working on split 10/164, extracting data in RAM of 1 split elements, totalling, 0.28939 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 14:05:42, ... applying FUN to selected data
+2014-10-31 14:05:42, ... appending result to the output ffdf
+2014-10-31 14:05:42, working on split 11/164, extracting data in RAM of 1 split elements, totalling, 0.28736 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 14:23:04, ... applying FUN to selected data
+2014-10-31 14:23:04, ... appending result to the output ffdf
+2014-10-31 14:23:04, working on split 12/164, extracting data in RAM of 1 split elements, totalling, 0.28367 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 14:40:05, ... applying FUN to selected data
+2014-10-31 14:40:05, ... appending result to the output ffdf
+2014-10-31 14:40:05, working on split 13/164, extracting data in RAM of 1 split elements, totalling, 0.28155 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 14:57:37, ... applying FUN to selected data
+2014-10-31 14:57:37, ... appending result to the output ffdf
+2014-10-31 14:57:37, working on split 14/164, extracting data in RAM of 1 split elements, totalling, 0.27029 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 15:13:37, ... applying FUN to selected data
+2014-10-31 15:13:38, ... appending result to the output ffdf
+2014-10-31 15:13:38, working on split 15/164, extracting data in RAM of 1 split elements, totalling, 0.23908 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 15:30:26, ... applying FUN to selected data
+2014-10-31 15:30:27, ... appending result to the output ffdf
+2014-10-31 15:30:27, working on split 16/164, extracting data in RAM of 1 split elements, totalling, 0.23893 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 15:47:34, ... applying FUN to selected data
+2014-10-31 15:47:34, ... appending result to the output ffdf
+2014-10-31 15:47:34, working on split 17/164, extracting data in RAM of 1 split elements, totalling, 0.22784 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 16:04:53, ... applying FUN to selected data
+2014-10-31 16:04:53, ... appending result to the output ffdf
+2014-10-31 16:04:53, working on split 18/164, extracting data in RAM of 1 split elements, totalling, 0.21967 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 16:21:43, ... applying FUN to selected data
+2014-10-31 16:21:43, ... appending result to the output ffdf
+2014-10-31 16:21:44, working on split 19/164, extracting data in RAM of 1 split elements, totalling, 0.21414 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+2014-10-31 16:39:44, ... applying FUN to selected data
+2014-10-31 16:39:45, ... appending result to the output ffdf
+2014-10-31 16:39:45, working on split 20/164, extracting data in RAM of 1 split elements, totalling, 0.21141 GB, while max specified data specified using BATCHBYTES is 0.01562 GB
+Terminated

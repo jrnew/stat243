@@ -1,0 +1,351 @@
+
+R version 3.0.2 (2013-09-25) -- "Frisbee Sailing"
+Copyright (C) 2013 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> rm(list = ls())
+> # setwd("~/Copy/Berkeley/stat243/ps6")
+> library(RSQLite)
+Loading required package: DBI
+> # library(RSQLite.extfuns)
+> library(ff)
+Loading required package: bit
+Attaching package bit
+package:bit (c) 2008-2012 Jens Oehlschlaegel (GPL-2)
+creators: bit bitwhich
+coercion: as.logical as.integer as.bit as.bitwhich which
+operator: ! & | xor != ==
+querying: print length any all min max range sum summary
+bit access: length<- [ [<- [[ [[<-
+for more help type ?bit
+
+Attaching package: ‘bit’
+
+The following object is masked from ‘package:base’:
+
+    xor
+
+Attaching package ff
+- getOption("fftempdir")=="/tmp/RtmpKRfirv"
+
+- getOption("ffextension")=="ff"
+
+- getOption("ffdrop")==TRUE
+
+- getOption("fffinonexit")==TRUE
+
+- getOption("ffpagesize")==65536
+
+- getOption("ffcaching")=="mmnoflush"  -- consider "ffeachflush" if your system stalls on large writes
+
+- getOption("ffbatchbytes")==16777216 -- consider a different value for tuning your system
+
+- getOption("ffmaxbytes")==536870912 -- consider a different value for tuning your system
+
+
+Attaching package: ‘ff’
+
+The following objects are masked from ‘package:bit’:
+
+    clone, clone.default, clone.list
+
+The following objects are masked from ‘package:utils’:
+
+    write.csv, write.csv2
+
+The following objects are masked from ‘package:base’:
+
+    is.factor, is.ordered
+
+> library(ffbase)
+
+Attaching package: ‘ffbase’
+
+The following objects are masked from ‘package:ff’:
+
+    [<-.ff, [.ff
+
+The following objects are masked from ‘package:base’:
+
+    %in%, table
+
+> library(foreach)
+> library(doParallel)
+Loading required package: iterators
+Loading required package: parallel
+> library(iterators)
+> library(doBy)
+Loading required package: survival
+Loading required package: splines
+Loading required package: MASS
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following object is masked from ‘package:bit’:
+
+    setattr
+
+> #----------------------------------------------------------------------
+> get_notifications <- TRUE
+> if (get_notifications) {
++   library(RPushbullet)
++   options(error = function() { # Be notified when there is an error
++     pbPost(type = "note", 
++            title = "Error!", 
++            body = geterrmessage(),
++            recipients = c(1, 2))
++   })
++ }
+Attaching RPushbullet version 0.1.0.
+Reading ~/.rpushbullet.json
+> #----------------------------------------------------------------------
+> data_dir <- "data"
+> procdata_dir <- "procdata"
+> dir.create(data_dir, showWarnings = FALSE)
+> dir.create(procdata_dir, showWarnings = FALSE)
+> years <- 1987:2008
+> #======================================================================
+> # Question 1
+> # Download all bz2 files
+> for (year in years) {
++   data_filepath <- paste0(year,".csv.bz2")
++   if (!file.exists(file.path(data_dir, data_filepath)))
++     download.file(paste0("http://www.stat.berkeley.edu/share/paciorek/", data_filepath),
++                   file.path(data_dir, data_filepath))
++ }
+> if (!file.exists(file.path(procdata_dir, "flights.db"))) {
++   db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++   col_classes <- c("integer", rep("factor", 3), rep("integer", 4), 
++                    "factor", "integer", "factor", rep("integer", 5), rep("factor", 2),
++                    rep("integer", 4), "factor", rep("integer", 6))
++   for (year in years) {
++     is_first_file <- year == years[1]
++     data_filepath <- paste0(year,".csv.bz2")
++     con <- bzfile(file.path(data_dir, data_filepath), "rt")
++     data <- read.csv(con, header = TRUE, colClasses = col_classes)
++     data$DepDelay[is.na(data$DepDelay)] <- -9999
++     dbWriteTable(conn = db, name = "flights", value = data,
++                  row.names = FALSE, append = !is_first_file)
++   }
++   dbDisconnect(db)
++   closeAllConnections()
++ }
+> #======================================================================
+> # Question 2
+> # (a) and (b) with SQLite
+> db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
+> 
+> # Subset flights data
+> if (!("flights_subset" %in% dbListTables(db))) {
++   viewquery <- "create view flights_subset as select * from flights where DepDelay >= -30 and DepDelay <= 720"
++   dbGetQuery(db, viewquery)
++ }
+> 
+> # Extract flights departing from SFO or OAK
+> system.time({
++   query1 <- "select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"
++   flights_bayarea <- dbGetQuery(db, query1)
++ })
+   user  system elapsed 
+ 52.644   7.408  60.304 
+> 
+> # Find mean/median departure delay by airport
+> system.time({
++   query2 <- "select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"
++   depdelay_mean <- dbGetQuery(db, query2)
++ })
+   user  system elapsed 
+222.101  28.813 258.769 
+> 
+> # Notes: Requires RSQLite.extfuns which is not available for R 3.0.2 on AWS
+> # init_extensions(db)
+> # system.time({
+> #   query3 <- "select Origin, median(DepDelay) as medianDepDelay from flights_subset group by Origin"
+> #   depdelay_median <- dbGetQuery(db, query3)
+> # })
+> 
+> if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2a/b for SQLite done!"),
++          recipients = c(1, 2))
++ }
+> 
+> # Check that flights were correctly extracted and means/medians calculated
+> unique(flights_bayarea$Origin)
+[1] "SFO" "OAK"
+> head(depdelay_mean)
+  Origin meanDepDelay
+1    ABE     5.030564
+2    ABI     3.771792
+3    ABQ     6.706767
+4    ABY     9.895705
+5    ACK    27.383212
+6    ACT     1.500635
+> # head(depdelay_median)
+> dbDisconnect(db)
+[1] TRUE
+> #----------------------------------------------------------------------
+> # (c)
+> # Add index to Origin
+> file.copy(file.path(procdata_dir, "flights.db"), file.path(procdata_dir, "flights-indexed.db"))
+[1] TRUE
+> db_indexed <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights-indexed.db"))
+> indexquery <- "create index OriginID on flights_subset(Origin)"
+> dbGetQuery(db_indexed, indexquery)
+Error in sqliteSendQuery(con, statement, bind.data) : 
+  error in statement: views may not be indexed
+Calls: dbGetQuery ... .local -> sqliteGetQuery -> sqliteSendQuery -> .Call
+> 
+> if (!("flights_subset" %in% dbListTables(db))) {
++   # Subset flights data
++   viewquery <- "create view flights_subset as select * from flights where DepDelay >= -30 and DepDelay <= 720"
++   dbGetQuery(db_indexed, viewquery)
++ }
+Error in sqliteSendQuery(con, statement, bind.data) : 
+  expired SQLiteConnection
+Calls: %in% ... .local -> sqliteGetQuery -> sqliteSendQuery -> .Call
+> 
+> # Extract flights departing from SFO or OAK
+> system.time({
++   query1 <- "select * from flights_subset where Origin = 'SFO' or Origin = 'OAK'"
++   flights_bayarea2 <- dbGetQuery(db_indexed, query1)
++ })
+   user  system elapsed 
+ 46.033   9.766 159.378 
+> 
+> # Find mean/median departure delay by airport
+> system.time({
++   query2 <- "select Origin, avg(DepDelay) as meanDepDelay from flights_subset group by Origin"
++   depdelay_mean2 <- dbGetQuery(db_indexed, query2)
++ })
+   user  system elapsed 
+226.049  33.339 403.262 
+> 
+> # init_extensions(db)
+> # system.time({
+> #   query3 <- "select Origin, median(DepDelay) as medianDepDelay from flights_subset group by Origin"
+> #   depdelay_median2 <- dbGetQuery(db_indexed, query3)
+> # })
+> 
+> if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2c for SQLite done!"),
++          recipients = c(1, 2))
++ }
+> 
+> # Check that flights were correctly extracted and means/medians calculated
+> unique(flights_bayarea2$Origin)
+[1] "SFO" "OAK"
+> head(depdelay_mean2)
+  Origin meanDepDelay
+1    ABE     5.030564
+2    ABI     3.771792
+3    ABQ     6.706767
+4    ABY     9.895705
+5    ACK    27.383212
+6    ACT     1.500635
+> # head(depdelay_median)
+> dbDisconnect(db)
+[1] TRUE
+Warning message:
+Expired SQLiteConnection. 
+> dbDisconnect(db)
+[1] TRUE
+Warning message:
+Expired SQLiteConnection. 
+> #----------------------------------------------------------------------
+> # (d)
+> # Find mean departure delay by airport (in parallel)
+> db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights-indexed.db"))
+> num_cores <- 4
+> registerDoParallel(num_cores)
+> query <- "select Origin from flights_subset"
+> airports <- unique(dbGetQuery(db, query)[[1]])
+> system.time({
++   depdelay_mean3 <- foreach(airport = airports, .combine = rbind) %dopar% {
++     db <- dbConnect(SQLite(), dbname = file.path(procdata_dir, "flights.db"))
++     query <- paste0("select Origin, avg(DepDelay) as meanDepDelay ",
++                     "from flights_subset where Origin = '", airport ,"'")
++     mean_temp <- dbGetQuery(db, query)
++   }
++ })
+     user    system   elapsed 
+13088.326  3734.930  5990.434 
+> 
+> if (get_notifications) {
++   pbPost(type = "note", 
++          title = paste0("ps6.R"), 
++          body = paste0("Question 2d for SQLite done!"),
++          recipients = c(1, 2))
++ }
+> 
+> # Check that flights were correctly extracted and means/medians calculated
+> head(mean_temp)
+Error in head(mean_temp) : object 'mean_temp' not found
+> dbDisconnect(db)
+[1] TRUE
+> #----------------------------------------------------------------------
+> # (a) and (b) with ff
+> # Download all ff files
+> data_filepaths <- c("AirlineDataAll.ffData", "AirlineDataAll.RData")
+> for (data_filepath in data_filepaths) {
++   if (!file.exists(file.path(data_dir, data_filepath)))
++     download.file(paste0("http://www.stat.berkeley.edu/share/paciorek/", data_filepath),
++                   file.path(data_dir, data_filepath))
++ }
+trying URL 'http://www.stat.berkeley.edu/share/paciorek/AirlineDataAll.ffData'
+Content type 'unknown' length 1371524630 bytes (1308.0 Mb)
+opened URL
+================================
+downloaded 1308.0 Mb
+
+trying URL 'http://www.stat.berkeley.edu/share/paciorek/AirlineDataAll.RData'
+Content type 'unknown' length 79681 bytes (77 Kb)
+opened URL
+==================================================
+downloaded 77 Kb
+
+> ffload(file.path(data_dir, "AirlineDataAll"))
+ [1] "tmp/RtmpU5Uw6z/ffdf4e684aecd7c4.ff" "tmp/RtmpU5Uw6z/ffdf4e687fb73a88.ff"
+ [3] "tmp/RtmpU5Uw6z/ffdf4e6862b1033f.ff" "tmp/RtmpU5Uw6z/ffdf4e6820053932.ff"
+ [5] "tmp/RtmpU5Uw6z/ffdf4e681e7d2235.ff" "tmp/RtmpU5Uw6z/ffdf4e686aa01c8.ff" 
+ [7] "tmp/RtmpU5Uw6z/ffdf4e6829316931.ff" "tmp/RtmpU5Uw6z/ffdf4e6857ad931e.ff"
+ [9] "tmp/RtmpU5Uw6z/ffdf4e686bade869.ff" "tmp/RtmpU5Uw6z/ffdf4e682bd3dfd1.ff"
+[11] "tmp/RtmpU5Uw6z/ffdf4e68371c2afa.ff" "tmp/RtmpU5Uw6z/ffdf4e6852a6f8c9.ff"
+[13] "tmp/RtmpU5Uw6z/ffdf4e685c89591d.ff" "tmp/RtmpU5Uw6z/ffdf4e682780692.ff" 
+[15] "tmp/RtmpU5Uw6z/ffdf4e684d1cc9df.ff" "tmp/RtmpU5Uw6z/ffdf4e682d8cd893.ff"
+[17] "tmp/RtmpU5Uw6z/ffdf4e6859caeda9.ff" "tmp/RtmpU5Uw6z/ffdf4e681c4fde5f.ff"
+[19] "tmp/RtmpU5Uw6z/ffdf4e68264d0b86.ff" "tmp/RtmpU5Uw6z/ffdf4e68e9b07f4.ff" 
+[21] "tmp/RtmpU5Uw6z/ffdf4e68358283ef.ff" "tmp/RtmpU5Uw6z/ffdf4e68718ce4c3.ff"
+[23] "tmp/RtmpU5Uw6z/ffdf4e6814fa5981.ff" "tmp/RtmpU5Uw6z/ffdf4e6856883d5d.ff"
+[25] "tmp/RtmpU5Uw6z/ffdf4e687a077481.ff" "tmp/RtmpU5Uw6z/ffdf4e684469a1f3.ff"
+[27] "tmp/RtmpU5Uw6z/ffdf4e685eedc1e5.ff" "tmp/RtmpU5Uw6z/ffdf4e6814973178.ff"
+[29] "tmp/RtmpU5Uw6z/ffdf4e683d69fd12.ff"
+> 
+> # Ad-hoc/temp
+> # ffload(file.path(data_dir, "temp/AirlineDataAll"))
+> 
+> # Subset flights data
+> select <- dat$DepDelay >= -30 & dat$DepDelay <= 720 & !is.na(dat$DepDelay)
+opening ff /tmp/RtmpU5Uw6z/ffdf4e682d8cd893.ff
+> indices_select <- ffwhich(select, select == TRUE)
+> dat_subset <- dat[indices_select, ]
+opening ff /tmp/RtmpU5Uw6z/ffdf4e684aecd7c4.ff
+Terminated
