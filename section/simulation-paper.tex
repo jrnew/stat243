@@ -1,0 +1,96 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+% Add hyperlinks
+\usepackage{hyperref}
+
+\title{STAT 243: Problem Set 7}
+\author{Jin Rou New [jrnew]}
+\date{\today}
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section*{Problem 1}
+
+\textbf{What are the goals of their simulation study and what are the metrics that they consider in assessing their method?} \\
+The goals of the simulation study are 1) to assess the accuracy of the proposed asymptotic approximation in finite samples and 2) to examine the power of the EM test. The metrics considered for the respective goals are 1) closeness of the simulated type I errors to the desired significance level (the closer, the better) and 2) the power of the EM test (the closer to 100\%, the better).\\
+
+\textbf{What choices did the authors have to make in designing their simulation study? What are the key aspects of the data generating mechanism that likely affect the statistical power of the test?} \\
+The authors had to specify the set $B$, the number of iterations $K$, and the penalty functions $p(\beta)$ and $p_{n}(\sigma^2; \hat{\sigma}^2)$. In addition, for the first goal, they had to choose the 12 null models with order 2 and another 12 null models with order 3, the sample sizes of 200 and 400, the significance levels of 5\% and 1\% and the number of repetitions (5000). For the second goal, they also had to choose the eight alternative models, the number of repetitions (1000) ad the significance level of 5\%.\\
+
+The aspects that affect the statistical power of the test are: sample size, effect size (i.e. difference between the hypothesized and true order of the finite normal mixture model) and significance level. \\
+
+
+\textbf{Discuss the extent to which they follow JASA's guidelines on simulation studies.} \\
+Aside from the paper, I also looked at the supplementary document for this article provided on the journal website. Oddly, the document referred to supplementary data text files and \texttt{R} scripts but I could not locate them either on the journal or author's website.\\
+
+\begin{itemize}
+\item Estimated accuracy of results: Not given explicitly but it is possible to get a sense of the uncertainty in the results from the boxplot figures for the Type I error but no uncertainty bounds are given for the EM test power.
+\item Description of pseudorandom-number generators: Not given explicitly, but we can assume that the default generator in \texttt{R}, Mersenne-Twister, is used. (Source: \href{http://stat.ethz.ch/R-manual/R-patched/library/base/html/Random.html}{R Random})
+\item Description of numerical algorithms: The hypothesis testing procedure can be carried out with \texttt{emtest.norm}, the \texttt{R} function in the package provided by the authors. If desired, it is possible to then access the full source code of the function. Sufficient details of the simulation study are given such that it is possible to replicate it.
+\item Description of computers: Not given.
+\item Description of programming languages: The authors state that \texttt{R} is used, but it would be helpful if they noted the version of \texttt{R} used.
+\item Description of major software components used: Not given.
+\end{itemize}
+
+\end{document}
+
