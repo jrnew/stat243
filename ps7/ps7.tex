@@ -1,0 +1,258 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+% Add hyperlinks
+\usepackage{hyperref}
+
+\title{STAT 243: Problem Set 7}
+\author{Jin Rou New [jrnew]}
+\date{\today}
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section{Problem 4g}
+The Cholesky decomposition is the fastest, followed by LU decomposition. Computing the $A^{-1}$ is the slowest by far. The difference in speeds increases as n and p increase.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{GetMatrices} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{n}\hlstd{,} \hlkwc{p}\hlstd{) \{}
+  \hlstd{Z} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlkwd{rnorm}\hlstd{(n}\hlopt{^}\hlnum{2}\hlstd{), n, n)}
+  \hlstd{A} \hlkwb{<-} \hlkwd{crossprod}\hlstd{(Z)} \hlcom{# t(Z) %*% Z}
+  \hlstd{X} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlkwd{rnorm}\hlstd{(n}\hlopt{*}\hlstd{p), n, p)}
+  \hlstd{B} \hlkwb{<-} \hlstd{A} \hlopt{%*%} \hlstd{X}
+  \hlkwd{return}\hlstd{(}\hlkwd{list}\hlstd{(}\hlkwc{A} \hlstd{= A,} \hlkwc{X} \hlstd{= X,} \hlkwc{B} \hlstd{= B))}
+\hlstd{\}}
+
+\hlkwd{set.seed}\hlstd{(}\hlnum{123}\hlstd{)}
+\hlkwa{for} \hlstd{(n} \hlkwa{in} \hlkwd{c}\hlstd{(}\hlnum{100}\hlstd{,} \hlnum{3000}\hlstd{)) \{}
+  \hlkwa{for} \hlstd{(p} \hlkwa{in} \hlkwd{c}\hlstd{(}\hlnum{1}\hlstd{,} \hlnum{100}\hlstd{,} \hlnum{3000}\hlstd{)) \{}
+    \hlkwd{cat}\hlstd{(}\hlstr{"n = "}\hlstd{, n,} \hlstr{"; p = "}\hlstd{, p,} \hlstr{"\textbackslash{}n"}\hlstd{)}
+    \hlstd{matrices} \hlkwb{<-} \hlkwd{GetMatrices}\hlstd{(}\hlkwc{n} \hlstd{= n,} \hlkwc{p} \hlstd{= p)}
+    \hlcom{# Method 1: Solve with LU decomposition}
+    \hlkwd{print}\hlstd{(}\hlkwd{system.time}\hlstd{(\{}
+      \hlstd{X1} \hlkwb{<-} \hlkwd{solve}\hlstd{(matrices}\hlopt{$}\hlstd{A, matrices}\hlopt{$}\hlstd{B)}
+    \hlstd{\}))}
+
+    \hlcom{# Method 2: Solve to find the inverse followed by matrix multiplication}
+    \hlkwd{print}\hlstd{(}\hlkwd{system.time}\hlstd{(\{}
+      \hlstd{X2} \hlkwb{<-} \hlkwd{solve}\hlstd{(matrices}\hlopt{$}\hlstd{A)} \hlopt{%*%} \hlstd{matrices}\hlopt{$}\hlstd{B}
+    \hlstd{\}))}
+
+    \hlcom{# Method 3: Cholesky decomposition}
+    \hlkwd{print}\hlstd{(}\hlkwd{system.time}\hlstd{(\{}
+      \hlstd{U} \hlkwb{<-} \hlkwd{chol}\hlstd{(matrices}\hlopt{$}\hlstd{A)}
+      \hlstd{X3} \hlkwb{<-} \hlkwd{backsolve}\hlstd{(U,} \hlkwd{backsolve}\hlstd{(U, matrices}\hlopt{$}\hlstd{B,} \hlkwc{transpose} \hlstd{=} \hlnum{TRUE}\hlstd{))}
+    \hlstd{\}))}
+  \hlstd{\}}
+\hlstd{\}}
+\end{alltt}
+\begin{verbatim}
+## n =  100 ; p =  1 
+##    user  system elapsed 
+##   0.001   0.000   0.001 
+##    user  system elapsed 
+##   0.001   0.000   0.002 
+##    user  system elapsed 
+##   0.001   0.001   0.008 
+## n =  100 ; p =  100 
+##    user  system elapsed 
+##   0.002   0.000   0.001 
+##    user  system elapsed 
+##   0.003   0.000   0.003 
+##    user  system elapsed 
+##   0.002   0.000   0.002 
+## n =  100 ; p =  3000 
+##    user  system elapsed 
+##   0.028   0.000   0.028 
+##    user  system elapsed 
+##   0.024   0.001   0.025 
+##    user  system elapsed 
+##   0.030   0.001   0.031 
+## n =  3000 ; p =  1 
+##    user  system elapsed 
+##   6.570   0.008   6.582 
+##    user  system elapsed 
+##  23.347   0.068  23.425 
+##    user  system elapsed 
+##   4.344   0.004   4.347 
+## n =  3000 ; p =  100 
+##    user  system elapsed 
+##   7.342   0.007   7.354 
+##    user  system elapsed 
+##  24.380   0.052  24.440 
+##    user  system elapsed 
+##   5.188   0.004   5.195 
+## n =  3000 ; p =  3000 
+##    user  system elapsed 
+##   31.33    0.04   31.39 
+##    user  system elapsed 
+##  44.826   0.103  44.931 
+##    user  system elapsed 
+##  30.917   0.048  30.982
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\section{Problem 5}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{GetBeta} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,} \hlkwc{Y}\hlstd{,} \hlkwc{A}\hlstd{,} \hlkwc{b}\hlstd{) \{}
+  \hlstd{X_qr} \hlkwb{<-} \hlkwd{qr}\hlstd{(X)}
+  \hlstd{C} \hlkwb{<-} \hlkwd{crossprod}\hlstd{(}\hlkwd{qr.R}\hlstd{(X_qr),} \hlkwd{qr.R}\hlstd{(X_qr))}
+  \hlstd{Cinvd} \hlkwb{<-} \hlkwd{backsolve}\hlstd{(}\hlkwd{qr.R}\hlstd{(X_qr),} \hlkwd{crossprod}\hlstd{(}\hlkwd{qr.Q}\hlstd{(X_qr), Y))}
+  \hlstd{ARinv} \hlkwb{<-} \hlstd{A} \hlopt{%*%} \hlkwd{solve}\hlstd{(}\hlkwd{qr.R}\hlstd{(X_qr))}
+  \hlstd{ACinvA} \hlkwb{<-} \hlkwd{tcrossprod}\hlstd{(AR, AR)}
+  \hlstd{ACinvd} \hlkwb{<-} \hlstd{A} \hlopt{%*%} \hlstd{Cinvd}
+  \hlstd{betahat} \hlkwb{<-} \hlstd{Cinvd} \hlopt{+} \hlkwd{solve}\hlstd{(C,} \hlkwd{crossprod}\hlstd{(A,} \hlkwd{solve}\hlstd{(ACinvA,} \hlopt{-}\hlstd{ACinvd} \hlopt{+} \hlstd{b)))}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\section{Problem 6}
+
+Comparing across trials with the same condition number and different magnitudes of eigenvalues, we can see that the error in estimated eigenvalues increases with the magnitude of the eigenvalues. Similarly, the error increases with the condition number.
+
+The condition number where the matrix is not numerically positive definite varies depending on the matrix A but in this particular set of results, the relevant condition number is $10^15$.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hlstd{(}\hlnum{6}\hlstd{)}
+\hlstd{n} \hlkwb{<-} \hlnum{100}
+\hlstd{Z} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlkwd{rnorm}\hlstd{(n), n, n)}
+\hlstd{A} \hlkwb{<-} \hlkwd{crossprod}\hlstd{(Z)}
+\hlstd{eigen_list} \hlkwb{<-} \hlkwd{eigen}\hlstd{(A)}
+\hlstd{gamma} \hlkwb{<-} \hlkwd{cbind}\hlstd{(eigen_list}\hlopt{$}\hlstd{vectors)}
+
+\hlstd{CreateMatrix} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{gamma}\hlstd{,} \hlkwc{eigenvalues}\hlstd{) \{}
+  \hlstd{lambda} \hlkwb{<-} \hlkwd{diag}\hlstd{(eigenvalues)}
+  \hlkwd{return}\hlstd{(gamma} \hlopt{%*%} \hlstd{lambda} \hlopt{%*%} \hlkwd{solve}\hlstd{(gamma))}
+\hlstd{\}}
+
+\hlstd{norm2} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{)}
+  \hlkwd{sqrt}\hlstd{(}\hlkwd{sum}\hlstd{(x}\hlopt{^}\hlnum{2}\hlstd{))}
+
+\hlstd{num_trials} \hlkwb{<-} \hlnum{12}
+\hlstd{results_list} \hlkwb{<-} \hlkwd{list}\hlstd{()}
+\hlstd{eigenvalues_ij} \hlkwb{<-} \hlstd{results_ij} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlnum{NA}\hlstd{, num_trials, n)}
+\hlstd{A_ijk} \hlkwb{<-} \hlkwd{array}\hlstd{(}\hlnum{NA}\hlstd{,} \hlkwd{c}\hlstd{(num_trials, n, n))}
+\hlstd{condition_number_i} \hlkwb{<-} \hlkwd{rep}\hlstd{(}\hlnum{NA}\hlstd{, num_trials)}
+
+\hlcom{# Specify sets of eigenvalues to test with}
+\hlstd{eigenvalues_ij[}\hlnum{1}\hlstd{, ]} \hlkwb{<-} \hlkwd{rep}\hlstd{(}\hlnum{0.00001}\hlstd{, n)}
+\hlstd{eigenvalues_ij[}\hlnum{2}\hlstd{, ]} \hlkwb{<-} \hlkwd{rep}\hlstd{(}\hlnum{1}\hlstd{, n)}
+\hlstd{eigenvalues_ij[}\hlnum{3}\hlstd{, ]} \hlkwb{<-} \hlkwd{rep}\hlstd{(}\hlnum{100000}\hlstd{, n)}
+\hlstd{eigenvalues_ij[}\hlnum{4}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n)}\hlopt{/}\hlnum{100000}
+\hlstd{eigenvalues_ij[}\hlnum{5}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n)}
+\hlstd{eigenvalues_ij[}\hlnum{6}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n)}\hlopt{*}\hlnum{100000}
+\hlstd{eigenvalues_ij[}\hlnum{7}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n}\hlopt{*}\hlnum{1000000000000}\hlstd{,} \hlkwc{length.out} \hlstd{= n)}\hlopt{/}\hlnum{100000}
+\hlstd{eigenvalues_ij[}\hlnum{8}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n}\hlopt{*}\hlnum{1000000000000}\hlstd{,} \hlkwc{length.out} \hlstd{= n)}
+\hlstd{eigenvalues_ij[}\hlnum{9}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n}\hlopt{*}\hlnum{1000000000000}\hlstd{,} \hlkwc{length.out} \hlstd{= n)}\hlopt{*}\hlnum{100000}
+\hlstd{eigenvalues_ij[}\hlnum{10}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n}\hlopt{*}\hlnum{10000000000000}\hlstd{,} \hlkwc{length.out} \hlstd{= n)}\hlopt{/}\hlnum{100000}
+\hlstd{eigenvalues_ij[}\hlnum{11}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n}\hlopt{*}\hlnum{10000000000000}\hlstd{,} \hlkwc{length.out} \hlstd{= n)}
+\hlstd{eigenvalues_ij[}\hlnum{12}\hlstd{, ]} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n}\hlopt{*}\hlnum{10000000000000}\hlstd{,} \hlkwc{length.out} \hlstd{= n)}\hlopt{*}\hlnum{100000}
+
+\hlcom{# Create a new matrix A given eigenvectors and eigenvalues,}
+\hlcom{# then perform an eigendecomposition and calculate condition number}
+\hlkwa{for} \hlstd{(i} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{num_trials) \{}
+  \hlstd{A_ijk[i, , ]} \hlkwb{<-} \hlkwd{CreateMatrix}\hlstd{(}\hlkwc{gamma} \hlstd{= gamma,} \hlkwc{eigenvalues} \hlstd{= eigenvalues_ij[i, ])}
+  \hlstd{results_ij[i, ]} \hlkwb{<-} \hlkwd{eigen}\hlstd{(A_ijk[i, , ])}\hlopt{$}\hlstd{values}
+  \hlstd{condition_number_i[i]} \hlkwb{<-} \hlkwd{abs}\hlstd{(}\hlkwd{max}\hlstd{(eigenvalues_ij[i, ]))}\hlopt{/}\hlkwd{abs}\hlstd{(}\hlkwd{min}\hlstd{(eigenvalues_ij[i, ]))}
+\hlstd{\}}
+
+\hlcom{# Summarise results}
+\hlstd{is_positive_definite_i} \hlkwb{<-} \hlkwd{apply}\hlstd{(}\hlkwd{Re}\hlstd{(results_ij),} \hlnum{1}\hlstd{,} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{)} \hlkwd{all}\hlstd{(x} \hlopt{>} \hlnum{0}\hlstd{))}
+\hlstd{error_i} \hlkwb{<-} \hlkwd{apply}\hlstd{(results_ij} \hlopt{-} \hlstd{eigenvalues_ij,} \hlnum{1}\hlstd{, norm2)}
+\hlstd{condition_number_i}
+\end{alltt}
+\begin{verbatim}
+##  [1] 1e+00 1e+00 1e+00 1e+02 1e+02 1e+02 1e+14 1e+14 1e+14 1e+15 1e+15
+## [12] 1e+15
+\end{verbatim}
+\begin{alltt}
+\hlkwd{data.frame}\hlstd{(}\hlkwc{condition_number} \hlstd{= condition_number_i,}
+           \hlkwc{magnitude} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlkwd{c}\hlstd{(}\hlnum{1}\hlopt{/}\hlnum{100000}\hlstd{,} \hlnum{1}\hlstd{,} \hlnum{100000}\hlstd{),} \hlkwd{nrow}\hlstd{(eigenvalues_ij)}\hlopt{/}\hlnum{3}\hlstd{),}
+           \hlkwc{is_positive_definite} \hlstd{= is_positive_definite_i,}
+           \hlkwc{error} \hlstd{= error_i)}
+\end{alltt}
+\begin{verbatim}
+##    condition_number magnitude is_positive_definite     error
+## 1             1e+00     1e-05                 TRUE 3.206e-19
+## 2             1e+00     1e+00                 TRUE 3.198e-14
+## 3             1e+00     1e+05                 TRUE 1.599e-09
+## 4             1e+02     1e-05                 TRUE 5.773e-03
+## 5             1e+02     1e+00                 TRUE 5.773e+02
+## 6             1e+02     1e+05                 TRUE 5.773e+07
+## 7             1e+14     1e-05                 TRUE 5.832e+09
+## 8             1e+14     1e+00                 TRUE 5.832e+14
+## 9             1e+14     1e+05                 TRUE 5.832e+19
+## 10            1e+15     1e-05                FALSE 5.832e+10
+## 11            1e+15     1e+00                FALSE 5.832e+15
+## 12            1e+15     1e+05                FALSE 5.832e+20
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+\end{document}
