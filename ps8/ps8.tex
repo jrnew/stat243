@@ -1,0 +1,419 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+% Add hyperlinks
+\usepackage{hyperref}
+
+\title{STAT 243: Problem Set 8}
+\author{Jin Rou New [jrnew]}
+\date{\today}
+
+
+
+
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+(a)
+Since we wish to obtain the mean, our $h(x)$ is simply $x$. To avoid discarding any samples, we can use the absolute values of the samples from a standard normal distribution and subtract 4 from all the absolute values so that the samples are from a half-normal distribution centered at -4. The same can be done for a half-t-distribution.
+
+$Var(\hat{\mu})$ is large; we see from the histogram that the samples of $\hat{\mu}$ range from -600 to 0. Most of the weights are less than 5, but there are some weights greater than that, even up to a maximum of 72. Such high weights give rise to overly influential points.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hlstd{(}\hlnum{0}\hlstd{)}
+\hlstd{m} \hlkwb{<-} \hlnum{10000}
+\hlstd{x} \hlkwb{<-} \hlopt{-} \hlkwd{abs}\hlstd{(}\hlkwd{rnorm}\hlstd{(m))} \hlopt{-} \hlnum{4} \hlcom{# samples from a half-normal distri centered/trunacted at -4}
+\hlstd{f} \hlkwb{<-} \hlkwd{dt}\hlstd{(x,} \hlkwc{df} \hlstd{=} \hlnum{3}\hlstd{)}\hlopt{/}\hlkwd{pt}\hlstd{(}\hlopt{-}\hlnum{4}\hlstd{,} \hlkwc{df} \hlstd{=} \hlnum{3}\hlstd{)}  \hlcom{# density of x under f, a t distri with df 3, truncated at -4}
+\hlstd{g} \hlkwb{<-} \hlkwd{dnorm}\hlstd{(x} \hlopt{+} \hlnum{4}\hlstd{)}\hlopt{/}\hlkwd{pnorm}\hlstd{(}\hlnum{0}\hlstd{)}  \hlcom{# density of x under g, a half-normal distri centered/truncated at -4}
+\hlstd{w} \hlkwb{<-} \hlstd{f}\hlopt{/}\hlstd{g} \hlcom{# weights}
+\hlstd{samples} \hlkwb{<-} \hlstd{x}\hlopt{*}\hlstd{w}
+\hlkwd{summary}\hlstd{(samples)}
+\end{alltt}
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  -558.0    -3.4    -3.0    -4.2    -2.8    -2.8
+\end{verbatim}
+\begin{alltt}
+\hlkwd{par}\hlstd{(}\hlkwc{cex} \hlstd{=} \hlnum{0.8}\hlstd{)}
+\hlkwd{hist}\hlstd{(samples,} \hlkwc{main} \hlstd{=} \hlkwd{expression}\hlstd{(}\hlkwd{frac}\hlstd{(}\hlkwd{h}\hlstd{(x)}\hlopt{*}\hlkwd{f}\hlstd{(x),} \hlkwd{g}\hlstd{(x))))}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q1a1} 
+\begin{kframe}\begin{alltt}
+\hlkwd{summary}\hlstd{(w)}
+\end{alltt}
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##    0.60    0.61    0.66    0.83    0.75   72.40
+\end{verbatim}
+\begin{alltt}
+\hlkwd{hist}\hlstd{(w,} \hlkwc{main} \hlstd{=} \hlkwd{expression}\hlstd{(}\hlkwd{frac}\hlstd{(}\hlkwd{f}\hlstd{(x),}\hlkwd{g}\hlstd{(x))))}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q1a2} 
+\begin{kframe}\begin{alltt}
+\hlkwd{mean}\hlstd{(samples)} \hlcom{# estimated mean of a t distri with df 3, truncated at -4}
+\end{alltt}
+\begin{verbatim}
+## [1] -4.246
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+(b)
+$Var(\hat{\mu})$ is not large since the samples of $\hat{\mu}$ lie between -14 and 0. The weights lie between 0 and 1.5, so there are no extreme weights. The choice of a t-distribution as opposed to a normal distribution for $g(x)$ gives rise to a better estimate of the desired mean since a t-distribution has heavier tails.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hlstd{(}\hlnum{0}\hlstd{)}
+\hlstd{m} \hlkwb{<-} \hlnum{10000}
+\hlstd{x} \hlkwb{<-} \hlopt{-} \hlkwd{abs}\hlstd{(}\hlkwd{rt}\hlstd{(m,} \hlkwc{df} \hlstd{=} \hlnum{1}\hlstd{))} \hlopt{-} \hlnum{4} \hlcom{# samples from a t distri centered/truncated at -4}
+\hlstd{f} \hlkwb{<-} \hlkwd{dt}\hlstd{(x,} \hlkwc{df} \hlstd{=} \hlnum{3}\hlstd{)}\hlopt{/}\hlkwd{pt}\hlstd{(}\hlopt{-}\hlnum{4}\hlstd{,} \hlkwc{df} \hlstd{=} \hlnum{3}\hlstd{)} \hlcom{# density of x under f, a t distri with df 3, truncated at -4}
+\hlstd{g} \hlkwb{<-} \hlkwd{dt}\hlstd{(x} \hlopt{+} \hlnum{4}\hlstd{,} \hlkwc{df} \hlstd{=} \hlnum{1}\hlstd{)}\hlopt{/}\hlkwd{pt}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwc{df} \hlstd{=} \hlnum{1}\hlstd{)}  \hlcom{# density of x under g, a t distri centered/truncated at -4}
+\hlstd{w} \hlkwb{<-} \hlstd{f}\hlopt{/}\hlstd{g} \hlcom{# weights}
+\hlstd{samples} \hlkwb{<-} \hlstd{x}\hlopt{*}\hlstd{w}
+\hlkwd{summary}\hlstd{(samples)}
+\end{alltt}
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+## -13.400  -7.940  -4.650  -6.210  -3.900  -0.047
+\end{verbatim}
+\begin{alltt}
+\hlkwd{par}\hlstd{(}\hlkwc{cex} \hlstd{=} \hlnum{0.8}\hlstd{)}
+\hlkwd{hist}\hlstd{(samples,} \hlkwc{main} \hlstd{=} \hlkwd{expression}\hlstd{(}\hlkwd{frac}\hlstd{(}\hlkwd{h}\hlstd{(x)}\hlopt{*}\hlkwd{f}\hlstd{(x),} \hlkwd{g}\hlstd{(x))))}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q1b1} 
+\begin{kframe}\begin{alltt}
+\hlkwd{summary}\hlstd{(w)}
+\end{alltt}
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   0.000   0.875   0.948   0.999   1.160   1.410
+\end{verbatim}
+\begin{alltt}
+\hlkwd{hist}\hlstd{(w,} \hlkwc{main} \hlstd{=} \hlkwd{expression}\hlstd{(}\hlkwd{frac}\hlstd{(}\hlkwd{f}\hlstd{(x),}\hlkwd{g}\hlstd{(x))))}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q1b2} 
+\begin{kframe}\begin{alltt}
+\hlkwd{mean}\hlstd{(samples)} \hlcom{# estimated mean of a t distri with df 3, truncated at -4}
+\end{alltt}
+\begin{verbatim}
+## [1] -6.209
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\section{Problem 2}
+\texttt{optim} and \texttt{nlm} give different results even with the same starting points. There are multiple local minima since different starting points give different minima.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{theta} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x1}\hlstd{,} \hlkwc{x2}\hlstd{)} \hlkwd{atan2}\hlstd{(x2, x1)}\hlopt{/}\hlstd{(}\hlnum{2}\hlopt{*}\hlstd{pi)}
+\hlstd{f} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x1}\hlstd{,} \hlkwc{x2}\hlstd{,} \hlkwc{x3}\hlstd{) \{}
+  \hlstd{f1} \hlkwb{<-} \hlnum{10}\hlopt{*}\hlstd{(x3} \hlopt{-} \hlnum{10}\hlopt{*}\hlkwd{theta}\hlstd{(x1, x2))}
+  \hlstd{f2} \hlkwb{<-} \hlnum{10}\hlopt{*}\hlstd{(}\hlkwd{sqrt}\hlstd{(x1}\hlopt{^}\hlnum{2}\hlopt{+}\hlstd{x2}\hlopt{^}\hlnum{2}\hlstd{)}\hlopt{-}\hlnum{1}\hlstd{)}
+  \hlstd{f3} \hlkwb{<-} \hlstd{x3}
+  \hlkwd{return}\hlstd{(f1}\hlopt{^}\hlnum{2}\hlopt{+}\hlstd{f2}\hlopt{^}\hlnum{2}\hlopt{+}\hlstd{f3}\hlopt{^}\hlnum{2}\hlstd{)}
+\hlstd{\}}
+
+\hlkwd{library}\hlstd{(fields)}
+\hlstd{x} \hlkwb{<-} \hlkwd{seq}\hlstd{(}\hlopt{-}\hlnum{100}\hlstd{,} \hlnum{100}\hlstd{,} \hlnum{1}\hlstd{)}
+\hlkwd{par}\hlstd{(}\hlkwc{mfrow} \hlstd{=} \hlkwd{c}\hlstd{(}\hlnum{7}\hlstd{,} \hlnum{3}\hlstd{),} \hlkwc{mar} \hlstd{=} \hlkwd{c}\hlstd{(}\hlnum{1.5}\hlstd{,} \hlnum{1.5}\hlstd{,} \hlnum{2}\hlstd{,} \hlnum{1}\hlstd{),} \hlkwc{oma} \hlstd{=} \hlkwd{c}\hlstd{(}\hlnum{3}\hlstd{,} \hlnum{3}\hlstd{,} \hlnum{0.5}\hlstd{,} \hlnum{1}\hlstd{))}
+\hlstd{X_all} \hlkwb{<-} \hlkwd{expand.grid}\hlstd{(x, x, x)}
+\hlstd{result_all} \hlkwb{<-} \hlkwd{f}\hlstd{(X_all[,} \hlnum{1}\hlstd{], X_all[,} \hlnum{2}\hlstd{], X_all[,} \hlnum{3}\hlstd{])}
+\hlkwa{for} \hlstd{(x3} \hlkwa{in} \hlstd{x[}\hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{,} \hlkwd{length}\hlstd{(x),} \hlnum{10}\hlstd{)]) \{}
+  \hlstd{result} \hlkwb{<-} \hlkwd{outer}\hlstd{(x, x,} \hlkwa{function}\hlstd{(}\hlkwc{x1}\hlstd{,} \hlkwc{x2}\hlstd{)} \hlkwd{f}\hlstd{(x1, x2, x3))}
+  \hlkwd{image}\hlstd{(x, x, result,} \hlkwc{col} \hlstd{=} \hlkwd{tim.colors}\hlstd{(}\hlnum{32}\hlstd{))}
+  \hlkwd{contour}\hlstd{(x, x, result,} \hlkwc{levels} \hlstd{=} \hlkwd{seq}\hlstd{(}\hlkwd{min}\hlstd{(result_all),} \hlkwd{max}\hlstd{(result_all),} \hlkwc{by} \hlstd{=} \hlnum{100000}\hlstd{),}
+          \hlkwc{add} \hlstd{=} \hlnum{TRUE}\hlstd{,} \hlkwc{col} \hlstd{=} \hlstr{"black"}\hlstd{)}
+  \hlkwd{mtext}\hlstd{(}\hlkwd{paste}\hlstd{(}\hlstr{"x3 ="}\hlstd{, x3),} \hlkwc{side} \hlstd{=} \hlnum{3}\hlstd{,} \hlkwc{line} \hlstd{=} \hlnum{0.5}\hlstd{)}
+\hlstd{\}}
+\hlkwd{mtext}\hlstd{(}\hlstr{"x1"}\hlstd{,} \hlkwc{side} \hlstd{=} \hlnum{1}\hlstd{,} \hlkwc{line} \hlstd{=} \hlnum{1}\hlstd{,} \hlkwc{outer} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+\hlkwd{mtext}\hlstd{(}\hlstr{"x2"}\hlstd{,} \hlkwc{side} \hlstd{=} \hlnum{2}\hlstd{,} \hlkwc{line} \hlstd{=} \hlnum{1}\hlstd{,} \hlkwc{outer} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\includegraphics[width=\maxwidth]{figure/latex-q2} 
+\begin{kframe}\begin{alltt}
+\hlstd{fnew} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{)} \hlkwd{f}\hlstd{(x[}\hlnum{1}\hlstd{], x[}\hlnum{2}\hlstd{], x[}\hlnum{3}\hlstd{])}
+\hlstd{X_init} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlkwd{c}\hlstd{(}\hlkwd{c}\hlstd{(}\hlnum{0}\hlstd{,} \hlnum{0}\hlstd{,} \hlnum{0}\hlstd{),}
+                   \hlkwd{c}\hlstd{(}\hlopt{-}\hlnum{50}\hlstd{,} \hlopt{-}\hlnum{50}\hlstd{,} \hlopt{-}\hlnum{50}\hlstd{),}
+                   \hlkwd{c}\hlstd{(}\hlnum{50}\hlstd{,} \hlnum{50}\hlstd{,} \hlnum{50}\hlstd{)),} \hlnum{3}\hlstd{,} \hlnum{3}\hlstd{,} \hlkwc{byrow} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+\hlkwa{for} \hlstd{(i} \hlkwa{in} \hlnum{1}\hlopt{:}\hlkwd{nrow}\hlstd{(X_init)) \{}
+  \hlkwd{cat}\hlstd{(}\hlstr{"Starting values of x are:"}\hlstd{,} \hlkwd{paste}\hlstd{(X_init[i, ],} \hlkwc{collapse} \hlstd{=} \hlstr{", "}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{)}
+  \hlstd{res} \hlkwb{<-} \hlkwd{optim}\hlstd{(}\hlkwc{par} \hlstd{= X_init[i, ], fnew)}
+  \hlkwd{cat}\hlstd{(}\hlstr{"Using optim...\textbackslash{}n"}\hlstd{)}
+  \hlkwd{cat}\hlstd{(}\hlstr{"Values of x are that minimize the function:\textbackslash{}n"}\hlstd{,} \hlkwd{paste}\hlstd{(res}\hlopt{$}\hlstd{par,} \hlkwc{collapse} \hlstd{=} \hlstr{", "}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{)}
+  \hlkwd{cat}\hlstd{(}\hlstr{"Minimum of the function:"}\hlstd{, res}\hlopt{$}\hlstd{value,} \hlstr{"\textbackslash{}n"}\hlstd{)}
+  \hlstd{res2} \hlkwb{<-} \hlkwd{nlm}\hlstd{(fnew,} \hlkwc{p} \hlstd{=  X_init[i, ])}
+  \hlkwd{cat}\hlstd{(}\hlstr{"Using nlm\textbackslash{}n"}\hlstd{)}
+  \hlkwd{cat}\hlstd{(}\hlstr{"Values of x are that minimize the function:\textbackslash{}n"}\hlstd{,} \hlkwd{paste}\hlstd{(res2}\hlopt{$}\hlstd{estimate,} \hlkwc{collapse} \hlstd{=} \hlstr{", "}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{)}
+  \hlkwd{cat}\hlstd{(}\hlstr{"Minimum of the function:"}\hlstd{, res2}\hlopt{$}\hlstd{minimum,} \hlstr{"\textbackslash{}n"}\hlstd{)}
+  \hlkwd{cat}\hlstd{(}\hlstr{"--------------------------------------------------\textbackslash{}n"}\hlstd{)}
+\hlstd{\}}
+\end{alltt}
+\begin{verbatim}
+## Starting values of x are: 0, 0, 0 
+## Using optim...
+## Values of x are that minimize the function:
+##  0.999978292008071, 0.00273069833992297, 0.00428463978017101 
+## Minimum of the function: 1.877e-05 
+## Using nlm
+## Values of x are that minimize the function:
+##  0, 0, 0 
+## Minimum of the function: 100 
+## --------------------------------------------------
+## Starting values of x are: -50, -50, -50 
+## Using optim...
+## Values of x are that minimize the function:
+##  0.996283723800005, 0.0458378202725633, 0.0703910496537494 
+## Minimum of the function: 0.006438 
+## Using nlm
+## Values of x are that minimize the function:
+##  1.00000000262574, -2.40278400888622e-09, 2.37351101623547e-09 
+## Minimum of the function: 4.536e-15 
+## --------------------------------------------------
+## Starting values of x are: 50, 50, 50 
+## Using optim...
+## Values of x are that minimize the function:
+##  0.986854200055761, 0.143879401874988, 0.225167763592301 
+## Minimum of the function: 0.05419 
+## Using nlm
+## Values of x are that minimize the function:
+##  0.999999492217191, -8.22574453915421e-05, -0.000130118659223364 
+## Minimum of the function: 1.702e-08 
+## --------------------------------------------------
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\section{Problem 3}
+(c)
+Once all the quantities such as $Q(\theta|\theta_t)$ and maximum likelihood estimates of the parameters were derived analytically, it was trivial to implement the EM algorithm in \texttt{R}. Starting values were obtained by carrying out a simple linear regression procedure on the data as if it were not censored. At each iteration, the required quantities as described in part 3(a) are evaluated and updated.
+
+The stopping criteria are 1) convergence of $Q(\theta|\theta_t)$, where convergence is reached when this value at the current iteration is within $1x10^{-10}$ of that of the previous iteration, and 2) the maximum number of iterations (default 10,000) is reached.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# Simulate data}
+\hlkwd{set.seed}\hlstd{(}\hlnum{1}\hlstd{)}
+\hlstd{n} \hlkwb{<-} \hlnum{100}
+\hlstd{x} \hlkwb{<-} \hlkwd{rnorm}\hlstd{(n)}
+\hlstd{beta0_true} \hlkwb{<-} \hlnum{2}
+\hlstd{beta1_true} \hlkwb{<-} \hlnum{0.5}
+\hlstd{sigma_true} \hlkwb{<-} \hlstd{beta1_true}\hlopt{*}\hlkwd{sqrt}\hlstd{(}\hlkwd{sum}\hlstd{((x} \hlopt{-} \hlkwd{mean}\hlstd{(x))}\hlopt{^}\hlnum{2}\hlstd{))}\hlopt{/}\hlnum{3} \hlcom{# for signal to noise ratio of 3}
+\hlstd{ytemp} \hlkwb{<-} \hlstd{beta0_true} \hlopt{+} \hlstd{beta1_true}\hlopt{*}\hlstd{x} \hlopt{+} \hlkwd{rnorm}\hlstd{(n,} \hlnum{0}\hlstd{, sigma_true)}
+\hlstd{tau1} \hlkwb{<-} \hlkwd{quantile}\hlstd{(ytemp,} \hlnum{0.8}\hlstd{)} \hlcom{# tau for 20% exceedances}
+\hlstd{tau2} \hlkwb{<-} \hlkwd{quantile}\hlstd{(ytemp,} \hlnum{0.2}\hlstd{)} \hlcom{# tau for 80% exceedances}
+\hlstd{truncated1} \hlkwb{<-} \hlstd{ytemp} \hlopt{>} \hlstd{tau1}
+\hlstd{truncated2} \hlkwb{<-} \hlstd{ytemp} \hlopt{>} \hlstd{tau2}
+\hlstd{y1} \hlkwb{<-} \hlkwd{pmin}\hlstd{(tau1, ytemp)}
+\hlstd{y2} \hlkwb{<-} \hlkwd{pmin}\hlstd{(tau2, ytemp)}
+\hlstd{data1} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{x} \hlstd{= x,} \hlkwc{y} \hlstd{= y1,} \hlkwc{truncated} \hlstd{= truncated1,} \hlkwc{tau} \hlstd{= tau1)}
+\hlstd{data2} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{x} \hlstd{= x,} \hlkwc{y} \hlstd{= y2,} \hlkwc{truncated} \hlstd{= truncated2,} \hlkwc{tau} \hlstd{= tau2)}
+
+\hlcom{# Check signal to noise ratio}
+\hlstd{mod_temp} \hlkwb{<-} \hlkwd{summary}\hlstd{(}\hlkwd{lm}\hlstd{(ytemp} \hlopt{~} \hlstd{x))}
+\hlstd{signal_to_noise_ratio} \hlkwb{<-} \hlstd{mod_temp}\hlopt{$}\hlstd{coefficients[}\hlnum{2}\hlstd{,} \hlnum{1}\hlstd{]}\hlopt{/}\hlstd{mod_temp}\hlopt{$}\hlstd{coefficients[}\hlnum{2}\hlstd{,} \hlnum{2}\hlstd{]}
+\hlstd{signal_to_noise_ratio}
+\end{alltt}
+\begin{verbatim}
+## [1] 3.106
+\end{verbatim}
+\begin{alltt}
+\hlcom{#' Perform the EM algorithm to estimate linear regression parameters for truncated data.}
+\hlcom{#' }
+\hlcom{#' @param data List with variables x, y, truncated and tau.}
+\hlcom{#' @param num_max_iterations Maximum number of iterations before EM algorithm }
+\hlcom{#' stops if convergence is still not reached.}
+\hlcom{#' @return List containing results of EM algorithm.}
+\hlstd{em_algorithm} \hlkwb{<-} \hlkwa{function}\hlstd{(}
+  \hlkwc{data}\hlstd{,}
+  \hlkwc{num_max_iterations} \hlstd{=} \hlnum{10000}
+\hlstd{) \{}
+  \hlcom{# Initialise parameter values}
+  \hlstd{mod} \hlkwb{<-} \hlkwd{summary}\hlstd{(}\hlkwd{lm}\hlstd{(data}\hlopt{$}\hlstd{y} \hlopt{~} \hlstd{data}\hlopt{$}\hlstd{x))}
+  \hlstd{beta0_all} \hlkwb{<-} \hlstd{beta0_prev} \hlkwb{<-} \hlstd{mod}\hlopt{$}\hlstd{coefficients[}\hlnum{1}\hlstd{,} \hlnum{1}\hlstd{]}
+  \hlstd{beta1_all} \hlkwb{<-} \hlstd{beta1_prev} \hlkwb{<-} \hlstd{mod}\hlopt{$}\hlstd{coefficients[}\hlnum{2}\hlstd{,} \hlnum{1}\hlstd{]}
+  \hlstd{sigma_all} \hlkwb{<-} \hlstd{sigma_prev} \hlkwb{<-} \hlstd{mod}\hlopt{$}\hlstd{sigma}\hlopt{*}\hlstd{(n}\hlopt{-}\hlnum{2}\hlstd{)}\hlopt{/}\hlstd{n}
+
+  \hlstd{x} \hlkwb{<-} \hlstd{data}\hlopt{$}\hlstd{x}
+  \hlstd{xtrunc} \hlkwb{<-} \hlstd{x[data}\hlopt{$}\hlstd{truncated} \hlopt{==} \hlnum{1}\hlstd{]}
+  \hlstd{ystar} \hlkwb{<-} \hlstd{data}\hlopt{$}\hlstd{y}
+  \hlstd{q_theta_all} \hlkwb{<-} \hlnum{NA}
+  \hlstd{q_theta_prev} \hlkwb{<-} \hlnum{0}
+  \hlstd{q_theta} \hlkwb{<-} \hlopt{-}\hlnum{10000}
+  \hlstd{i} \hlkwb{<-} \hlnum{1}
+
+  \hlkwa{while} \hlstd{(}\hlkwd{abs}\hlstd{(q_theta} \hlopt{-} \hlstd{q_theta_prev)} \hlopt{>} \hlnum{1e-10} \hlopt{&} \hlstd{i} \hlopt{<=} \hlstd{num_max_iterations) \{}
+    \hlkwa{if} \hlstd{(i} \hlopt{>} \hlnum{1}\hlstd{) \{}
+      \hlstd{beta0_prev} \hlkwb{<-} \hlstd{beta0}
+      \hlstd{beta1_prev} \hlkwb{<-} \hlstd{beta1}
+      \hlstd{sigma_prev} \hlkwb{<-} \hlstd{sigma}
+      \hlstd{q_theta_prev} \hlkwb{<-} \hlstd{q_theta}
+    \hlstd{\}}
+
+    \hlcom{# Compute E(Y_\{trunc, i\} | theta_t) for i = 1, ..., c}
+    \hlstd{mu_trunc} \hlkwb{<-} \hlstd{beta0_prev} \hlopt{+} \hlstd{beta1_prev}\hlopt{*}\hlstd{xtrunc}
+    \hlstd{tau_star} \hlkwb{<-} \hlstd{(data}\hlopt{$}\hlstd{tau} \hlopt{-} \hlstd{mu_trunc)}\hlopt{/}\hlstd{sigma_prev}
+    \hlstd{rho_tau_star} \hlkwb{<-} \hlkwd{dnorm}\hlstd{(tau_star)}\hlopt{/}\hlstd{(}\hlnum{1} \hlopt{-} \hlkwd{pnorm}\hlstd{(tau_star))}
+    \hlstd{mean_ytrunc} \hlkwb{<-} \hlstd{mu_trunc} \hlopt{+} \hlstd{sigma_prev}\hlopt{*}\hlstd{rho_tau_star}
+    \hlstd{ystar[data}\hlopt{$}\hlstd{truncated} \hlopt{==} \hlnum{1}\hlstd{]} \hlkwb{<-} \hlstd{mean_ytrunc}
+    \hlstd{var_ytrunc} \hlkwb{<-} \hlstd{(sigma_prev}\hlopt{^}\hlnum{2}\hlstd{)}\hlopt{*}\hlstd{(}\hlnum{1} \hlopt{+} \hlstd{tau_star}\hlopt{*}\hlstd{rho_tau_star} \hlopt{-} \hlstd{rho_tau_star}\hlopt{^}\hlnum{2}\hlstd{)}
+
+    \hlcom{# Regress ystar = \{Yobs, E(Y_\{trunc, i\} | theta_t)\} on \{x\}}
+    \hlstd{mod} \hlkwb{<-} \hlkwd{lm}\hlstd{(ystar} \hlopt{~} \hlstd{x)}
+    \hlstd{beta0} \hlkwb{<-} \hlstd{mod}\hlopt{$}\hlstd{coefficients[}\hlnum{1}\hlstd{]}
+    \hlstd{beta1} \hlkwb{<-} \hlstd{mod}\hlopt{$}\hlstd{coefficients[}\hlnum{2}\hlstd{]}
+
+    \hlcom{# Compute sigma and q_theta}
+    \hlstd{rss_star} \hlkwb{<-} \hlkwd{sum}\hlstd{((ystar} \hlopt{-} \hlstd{beta0} \hlopt{-} \hlstd{beta1}\hlopt{*}\hlstd{x)}\hlopt{^}\hlnum{2}\hlstd{)} \hlopt{+} \hlkwd{sum}\hlstd{(var_ytrunc)} \hlcom{# corresponds to A + B + C in derivation}
+    \hlstd{sigma} \hlkwb{<-} \hlkwd{sqrt}\hlstd{(rss_star}\hlopt{/}\hlstd{n)}
+    \hlstd{q_theta} \hlkwb{<-} \hlopt{-}\hlstd{(n}\hlopt{/}\hlnum{2}\hlstd{)}\hlopt{*}\hlkwd{log}\hlstd{(}\hlnum{2}\hlopt{*}\hlstd{pi}\hlopt{*}\hlstd{sigma}\hlopt{^}\hlnum{2}\hlstd{)} \hlopt{-} \hlstd{rss_star}\hlopt{/}\hlstd{(}\hlnum{2}\hlopt{*}\hlstd{sigma}\hlopt{^}\hlnum{2}\hlstd{)}
+
+    \hlcom{# Save current values}
+    \hlstd{beta0_all} \hlkwb{<-} \hlkwd{c}\hlstd{(beta0_all, beta0)}
+    \hlstd{beta1_all} \hlkwb{<-} \hlkwd{c}\hlstd{(beta1_all, beta1)}
+    \hlstd{sigma_all} \hlkwb{<-} \hlkwd{c}\hlstd{(sigma_all, sigma)}
+    \hlstd{q_theta_all} \hlkwb{<-} \hlkwd{c}\hlstd{(q_theta_all, q_theta)}
+    \hlstd{i} \hlkwb{<-} \hlstd{i} \hlopt{+} \hlnum{1}
+  \hlstd{\}}
+  \hlkwd{cat}\hlstd{(}\hlkwd{paste0}\hlstd{(}\hlstr{"Results of EM algorithm:\textbackslash{}nbeta0: "}\hlstd{,} \hlkwd{tail}\hlstd{(beta0_all,} \hlnum{1}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{,}
+             \hlstr{"beta1: "}\hlstd{,} \hlkwd{tail}\hlstd{(beta1_all,} \hlnum{1}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{,}
+             \hlstr{"sigma: "}\hlstd{,} \hlkwd{tail}\hlstd{(sigma_all,} \hlnum{1}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{,}
+             \hlstr{"Q(theta|theta_t): "}\hlstd{,} \hlkwd{tail}\hlstd{(q_theta_all,} \hlnum{1}\hlstd{),} \hlstr{"\textbackslash{}n"}\hlstd{))}
+  \hlkwd{return}\hlstd{(}\hlkwd{list}\hlstd{(}\hlkwc{beta0} \hlstd{= beta0_all,} \hlkwc{beta1} \hlstd{= beta1_all,} \hlkwc{sigma} \hlstd{= sigma_all,}
+              \hlkwc{q_theta} \hlstd{= q_theta_all))}
+\hlstd{\}}
+
+\hlstd{em1} \hlkwb{<-} \hlkwd{em_algorithm}\hlstd{(}\hlkwc{data} \hlstd{= data1)}
+\end{alltt}
+\begin{verbatim}
+## Results of EM algorithm:
+## beta0: 1.92534766634096
+## beta1: 0.517277573528124
+## sigma: 1.38272227346804
+## Q(theta|theta_t): -174.299275116462
+\end{verbatim}
+\begin{alltt}
+\hlstd{em2} \hlkwb{<-} \hlkwd{em_algorithm}\hlstd{(}\hlkwc{data} \hlstd{= data2)}
+\end{alltt}
+\begin{verbatim}
+## Results of EM algorithm:
+## beta0: 1.58516269644711
+## beta1: 0.407096769678552
+## sigma: 1.04110157573639
+## Q(theta|theta_t): -145.921789323239
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+(d)
+\texttt{optim} minimizes a function, so I inputed the negative log likelihood function as the function to be minimized. Since the parameter $\sigma$ must be positive, I worked with it on the log scale.
+
+The Hessian evaluated at the MLE when the negative log likelihood is minimized is equivalent to the observed Fisher information evaluated at the MLE. The inverse of the observed Fisher information gives an estimate of the covariance matrix, so the square root of the diagnonal elements give the standard errors of the parameter estimates.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# Get initial parameter values}
+\hlstd{init1} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlkwc{beta0} \hlstd{= em1}\hlopt{$}\hlstd{beta0[}\hlnum{1}\hlstd{],} \hlkwc{beta1} \hlstd{= em1}\hlopt{$}\hlstd{beta1[}\hlnum{1}\hlstd{],} \hlkwc{log_sigma} \hlstd{=} \hlkwd{log}\hlstd{(em1}\hlopt{$}\hlstd{sigma[}\hlnum{1}\hlstd{]))}
+\hlstd{init2} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlkwc{beta0} \hlstd{= em2}\hlopt{$}\hlstd{beta0[}\hlnum{1}\hlstd{],} \hlkwc{beta1} \hlstd{= em2}\hlopt{$}\hlstd{beta1[}\hlnum{1}\hlstd{],} \hlkwc{log_sigma} \hlstd{=} \hlkwd{log}\hlstd{(em2}\hlopt{$}\hlstd{sigma[}\hlnum{1}\hlstd{]))}
+
+\hlstd{negloglikelihood} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{par}\hlstd{,} \hlkwc{data}\hlstd{) \{}
+  \hlstd{beta0} \hlkwb{<-} \hlstd{par[}\hlnum{1}\hlstd{]}
+  \hlstd{beta1} \hlkwb{<-} \hlstd{par[}\hlnum{2}\hlstd{]}
+  \hlstd{log_sigma} \hlkwb{<-} \hlstd{par[}\hlnum{3}\hlstd{]}
+  \hlstd{mu} \hlkwb{<-} \hlstd{beta0} \hlopt{+} \hlstd{beta1}\hlopt{*}\hlstd{x}
+  \hlcom{# Log likelihood function for censored data}
+  \hlstd{lik} \hlkwb{<-} \hlkwd{sum}\hlstd{(}\hlkwd{dnorm}\hlstd{(data}\hlopt{$}\hlstd{y[}\hlopt{!}\hlstd{data}\hlopt{$}\hlstd{truncated], mu[}\hlopt{!}\hlstd{data}\hlopt{$}\hlstd{truncated],} \hlkwd{exp}\hlstd{(log_sigma),}
+                   \hlkwc{log} \hlstd{=} \hlnum{TRUE}\hlstd{),}
+             \hlkwd{pnorm}\hlstd{(data}\hlopt{$}\hlstd{tau, mu[data}\hlopt{$}\hlstd{truncated],} \hlkwd{exp}\hlstd{(log_sigma),}
+                   \hlkwc{log} \hlstd{=} \hlnum{TRUE}\hlstd{,} \hlkwc{lower.tail} \hlstd{=} \hlnum{FALSE}\hlstd{))}
+  \hlkwd{return}\hlstd{(}\hlopt{-}\hlstd{lik)}
+\hlstd{\}}
+
+\hlstd{solve1} \hlkwb{<-} \hlkwd{optim}\hlstd{(}\hlkwc{par} \hlstd{= init1,} \hlkwc{fn} \hlstd{= negloglikelihood,} \hlkwc{data} \hlstd{= data1,} \hlkwc{method} \hlstd{=} \hlstr{"BFGS"}\hlstd{,} \hlkwc{hessian} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+\hlstd{cov1} \hlkwb{<-} \hlkwd{solve}\hlstd{(solve1}\hlopt{$}\hlstd{hessian)} \hlcom{# estimate of covariance matrix}
+\hlkwd{sqrt}\hlstd{(}\hlkwd{diag}\hlstd{(cov1))} \hlcom{# standard errors of parameter estimates}
+\end{alltt}
+\begin{verbatim}
+##     beta0     beta1 log_sigma 
+##   0.14311   0.15931   0.08323
+\end{verbatim}
+\begin{alltt}
+\hlstd{solve2} \hlkwb{<-} \hlkwd{optim}\hlstd{(}\hlkwc{par} \hlstd{= init2,} \hlkwc{fn} \hlstd{= negloglikelihood,} \hlkwc{data} \hlstd{= data2,} \hlkwc{method} \hlstd{=} \hlstr{"BFGS"}\hlstd{,} \hlkwc{hessian} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+\hlstd{cov2} \hlkwb{<-} \hlkwd{solve}\hlstd{(solve2}\hlopt{$}\hlstd{hessian)} \hlcom{# estimate of covariance matrix}
+\hlkwd{sqrt}\hlstd{(}\hlkwd{diag}\hlstd{(cov2))} \hlcom{# standard errors of parameter estimates}
+\end{alltt}
+\begin{verbatim}
+##     beta0     beta1 log_sigma 
+##    0.2545    0.1733    0.1878
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+%================================================================================
+\end{document}

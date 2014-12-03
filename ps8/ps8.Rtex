@@ -1,0 +1,66 @@
+\documentclass{article}
+\usepackage{graphicx}
+
+% Set page margins
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+% Remove paragraph indenting
+\setlength\parindent{0pt}
+% Add hyperlinks
+\usepackage{hyperref}
+
+\title{STAT 243: Problem Set 8}
+\author{Jin Rou New [jrnew]}
+\date{\today}
+
+%% begin.rcode setup, include=FALSE
+% opts_chunk$set(fig.path='figure/latex-', cache.path='cache/latex-')
+%% end.rcode
+
+%% begin.rcode read-chunk, echo=FALSE
+% library(knitr)
+% read_chunk("ps8.R") 
+%% end.rcode
+
+\begin{document}
+\maketitle
+
+\section{Problem 1}
+(a)
+Since we wish to obtain the mean, our $h(x)$ is simply $x$. To avoid discarding any samples, we can use the absolute values of the samples from a standard normal distribution and subtract 4 from all the absolute values so that the samples are from a half-normal distribution centered at -4. The same can be done for a half-t-distribution.
+
+$Var(\hat{\mu})$ is large; we see from the histogram that the samples of $\hat{\mu}$ range from -600 to 0. Most of the weights are less than 5, but there are some weights greater than that, even up to a maximum of 72. Such high weights give rise to overly influential points.
+
+%% begin.rcode q1a, cache=TRUE, fig.width=3, fig.height=3
+%% end.rcode
+
+(b)
+$Var(\hat{\mu})$ is not large since the samples of $\hat{\mu}$ lie between -14 and 0. The weights lie between 0 and 1.5, so there are no extreme weights. The choice of a t-distribution as opposed to a normal distribution for $g(x)$ gives rise to a better estimate of the desired mean since a t-distribution has heavier tails.
+
+%% begin.rcode q1b, cache=TRUE, fig.width=3, fig.height=3
+%% end.rcode
+%================================================================================
+\section{Problem 2}
+\texttt{optim} and \texttt{nlm} give different results even with the same starting points. There are multiple local minima since different starting points give different minima.
+
+%% begin.rcode q2, cache=TRUE, fig.width=7, fig.height=10
+%% end.rcode
+%================================================================================
+\section{Problem 3}
+(c)
+Once all the quantities such as $Q(\theta|\theta_t)$ and maximum likelihood estimates of the parameters were derived analytically, it was trivial to implement the EM algorithm in \texttt{R}. Starting values were obtained by carrying out a simple linear regression procedure on the data as if it were not censored. At each iteration, the required quantities as described in part 3(a) are evaluated and updated.
+
+The stopping criteria are 1) convergence of $Q(\theta|\theta_t)$, where convergence is reached when this value at the current iteration is within $1x10^{-10}$ of that of the previous iteration, and 2) the maximum number of iterations (default 10,000) is reached.
+
+%% begin.rcode q3c, cache=TRUE
+%% end.rcode
+
+(d)
+\texttt{optim} minimizes a function, so I inputed the negative log likelihood function as the function to be minimized. Since the parameter $\sigma$ must be positive, I worked with it on the log scale.
+
+The Hessian evaluated at the MLE when the negative log likelihood is minimized is equivalent to the observed Fisher information evaluated at the MLE. The inverse of the observed Fisher information gives an estimate of the covariance matrix, so the square root of the diagnonal elements give the standard errors of the parameter estimates.
+
+%% begin.rcode q3d, cache=TRUE
+%% end.rcode
+%================================================================================
+\end{document}
