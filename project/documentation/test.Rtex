@@ -1,0 +1,76 @@
+\documentclass{article}
+\usepackage{graphicx}
+%% for inline R code: if the inline code is not correctly parsed, you will see a message
+\newcommand{\rinline}[1]{SOMETHING WRONG WITH knitr}
+%% begin.rcode setup, include=FALSE
+library(knitr)
+opts_chunk$set(fig.path='figure/latex-', cache.path='cache/latex-')
+# Load all functions in R folder
+Rfiles <- list.files(file.path(getwd(), "../R"))
+Rfiles <- Rfiles[grepl(".R", Rfiles)]
+sapply(paste0("../R/", Rfiles), source)
+%% end.rcode
+
+\begin{document}
+
+\section{Testing}
+We implemented testing functions for each method to ensure that each 
+function takes proper inputs and returns desired outputs. Each method 
+functions properly when tested using small data sets. In order to test the 
+functionality of our genetic algorithm, we employed a larger, more realistic 
+data set. We compared the models selected using our genetic algorithim with a 
+well-known model selection method, the stepwise model selection using AIC, 
+implemented in R in the \texttt{stepAIC} function available in the 
+\texttt{MASS} package.
+
+This data set was obtained from surveys about how video games 
+affect grades. There are 15 variables in the data set -- time (number of 
+hours play), like (whether like to play), where (where to play), freq (how 
+often), busy (play if busy), educ (playing educational), sex, age, home 
+(computer at home), math (hate math), work (number of hours work per weeek), 
+own (own PC), cdrom (PC has CD-rom), email (have Email) and grade. The 
+dependent variable is grade. Completed data were obtained from 91 students 
+during Fall 1994 at Berkeley. The data source can be found at the Stat Labs 
+website for University of California, Berkeley. 
+
+The following results are obtained using our genetic algorithim.
+
+%% begin.rcode, cache = TRUE, results = "hide"
+data <- read.table("../data/video.txt", header = TRUE, quote = "\"")
+ga <- select_model(data, 
+                   yvar = "grade",
+                   pop_size = nrow(data)*2,
+                   num_max_iterations = 50, 
+                   model = "glm",
+                   glm_family = "gaussian")
+%% end.rcode
+
+%% begin.rcode, cache = TRUE
+res <- summary(ga)
+%% end.rcode 
+
+The following results are obtained using the \texttt{stepAIC} function.
+
+%% begin.rcode, cache = TRUE, 
+library(MASS)
+mod <- glm(grade ~ ., data = data) 
+res_step <- stepAIC(mod)
+%% end.rcode
+
+The best model found using genetic algorithim was: y $\sim$
+\rinline{paste(res$xvars, collapse = " + ")}, 
+with an AIC of \rinline{round(res$evaluation, digits = 2)}. This result 
+is better than that of \rinline{round(res_step$aic, digits = 2)} that
+we obtained using the \texttt{stepAIC} function. 
+
+Finally, we plotted the best AIC for each generation to see how the best AIC 
+has changed over generations. 
+
+%% begin.rcode, cache = TRUE, fig.width = 3, fig.height = 3
+par(cex = 0.8)
+plot(ga)
+%% end.rcode
+
+From the plot, we can see that the best model was found at generation 9. 
+
+\end{document}

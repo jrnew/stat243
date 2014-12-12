@@ -1,0 +1,38 @@
+\inputencoding{utf8}
+\HeaderA{evaluate}{Do evaluation.}{evaluate}
+%
+\begin{Description}\relax
+Do evaluation for chromosomes in population by calculating model selection criterion.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+evaluate(pop, model_data, model = "lm", glm_family = NULL,
+  criterion = "AIC", do_parallel = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{pop}] Matrix of population of chromosomes.
+
+\item[\code{model\_data}] Object of class model\_data.
+
+\item[\code{model}] Character; "lm" (default) or "glm"; Linear model or
+generalized linear model.
+
+\item[\code{glm\_family}] Character if model is "glm", NULL otherwise;
+"binomial", "gaussian" (default), "Gamma", "inverse.gaussian", "poisson", "quasi",
+"quasibinomial", "quasipoisson"; A family function that gives the error
+distribution and link function to be used in the model.
+
+\item[\code{criterion}] "AIC" (default) or "BIC"; Criterion to be minimized.
+
+\item[\code{do\_parallel}] Logical; Default FALSE; Do in parallel?
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Numeric vector; Evaluation values for all chromosomes
+in the current generation.
+\end{Value}

@@ -1,0 +1,29 @@
+\inputencoding{utf8}
+\HeaderA{select\_for\_mating}{Select chromosomes for recombination.}{select}
+%
+\begin{Description}\relax
+Select chromosomes for recombination based on fitness.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+select_for_mating(pop, evaluation, method = "rank", do_parallel = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{pop}] Matrix; Population of chromosomes.
+
+\item[\code{evaluation}] Numeric vector; Evaluation values of all chromosomes in population.
+
+\item[\code{method}] String; "rank" (linear rank selection) (default) or
+"tournament"; Method to select chromosomes for inclusion in mating pool.
+
+\item[\code{do\_parallel}] Logical; Default FALSE; Do in parallel?
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Matrix of population of chromosomes that form the mating pool.
+\end{Value}

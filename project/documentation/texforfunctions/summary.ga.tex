@@ -1,0 +1,26 @@
+\inputencoding{utf8}
+\HeaderA{summary.ga}{Display summary of results from the genetic algorithim.}{summary.ga}
+%
+\begin{Description}\relax
+Outputs the top models selected from the genetic algorithm.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'ga'
+summary(ga, num_view = 5)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{ga}] Object of class ga.
+
+\item[\code{num\_view}] Number of top models to display.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Prints summary of top models and associated value of
+model selection criterion.
+\end{Value}

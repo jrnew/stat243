@@ -1,0 +1,25 @@
+\inputencoding{utf8}
+\HeaderA{initialize}{Initialize first generation of chromosomes.}{initialize}
+%
+\begin{Description}\relax
+Initialize first generation of chromosomes completely randomly.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+initialize(pop_size, num_vars)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{pop\_size}] Non-negative integer; Number of chromosomes in population.
+
+\item[\code{num\_vars}] Non-negative integer; Number of variables in model under consideration/
+number of genes in each chromosome.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A matrix of size pop\_size x num\_vars with 1's and 0's.
+\end{Value}

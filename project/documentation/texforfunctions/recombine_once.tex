@@ -1,0 +1,27 @@
+\inputencoding{utf8}
+\HeaderA{recombine\_once}{Recombine once.}{recombine.Rul.once}
+%
+\begin{Description}\relax
+Carry out crossover of two parent chromosomes to produce one child chromosome.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+recombine_once(parent1, parent2, method = "onepoint")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{parent1}] Integer vector of 1st parent chromosome containing 1's and 0's.
+
+\item[\code{parent2}] Integer vector of 2nd parent chromosome containing 1's and 0's.
+
+\item[\code{method}] String; "onepoint" (default), "twopoint", "uniform";
+Type of crossover, at one point, at two points or uniformly (at all possible points).
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Integer vector of child chromosome containing 1's and 0's.
+\end{Value}

@@ -1,0 +1,33 @@
+\inputencoding{utf8}
+\HeaderA{recombine}{Recombine.}{recombine}
+%
+\begin{Description}\relax
+Carry out crossover of parent chromosomes in a mating pool.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+recombine(pop_mating, pop_size, method = "onepoint", prob_recombine = 0.6,
+  do_parallel = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{pop\_mating}] Matrix of population of chromosomes that form the mating pool.
+
+\item[\code{pop\_size}] Integer; Number of chromosomes in a generation.
+
+\item[\code{method}] String; "onepoint" (default), "twopoint", "uniform";
+Type of crossover, at one point, at two points or uniformly (at all possible points).
+
+\item[\code{prob\_recombine}] Numeric, between 0 and 1; Default is 0.6;
+Probability of recombination.
+
+\item[\code{do\_parallel}] Logical; Default FALSE; Do in parallel?
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Matrix of population of chromosomes resulting from recombination.
+\end{Value}

@@ -1,0 +1,27 @@
+\inputencoding{utf8}
+\HeaderA{plot.ga}{Plots results from the genetic algorithim.}{plot.ga}
+%
+\begin{Description}\relax
+Plots the best model evaluation criterion in each generation
+against the generation iteration.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+## S3 method for class 'ga'
+plot(ga, num_view = 3)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{ga}] Object of class ga.
+
+\item[\code{num\_view}] Number of top models to display.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Prints summary of top models and associated value of
+model selection criterion.
+\end{Value}

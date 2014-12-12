@@ -1,0 +1,37 @@
+\inputencoding{utf8}
+\HeaderA{process\_data}{Process data for input into genetic algorithm.}{process.Rul.data}
+%
+\begin{Description}\relax
+Process data for input into genetic algorithm.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+process_data(data, yvar, xvars = NULL)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{data}] Data frame
+
+\item[\code{yvar}] Character; Name of column containing response variable.
+
+\item[\code{xvars}] Character vector; Default is all column names that are not yvar;
+Name(s) of column(s) containing set of explanatory variables to select on.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+A list object named model\_data containing:
+\begin{description}
+
+\item[data] Data frame; Processed data with only relevant columns.
+\item[yvar] Character; Name of column containing response variable.
+\item[xvars] Character vector; Name(s) of column(s) containing
+set of explanatory variables to select on.
+\item[num\_vars] Integer; Length of xvars.
+
+\end{description}
+
+\end{Value}

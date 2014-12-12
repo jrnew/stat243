@@ -1,0 +1,58 @@
+\inputencoding{utf8}
+\HeaderA{select}{Carry out model selection with a genetic algorithm.}{select.Rul.model}
+%
+\begin{Description}\relax
+Main function for carrying out model selection with a genetic algorithm.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+select(data, yvar, xvars = NULL, model = "lm", glm_family = NULL,
+  criterion = "AIC", pop_size = 100L, method_select = "rank",
+  method_recombine = "onepoint", prob_recombine = 0.6, prob_mutate = 0.01,
+  num_max_iterations = 100L, seed = 123, do_parallel = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{data}] Data frame
+
+\item[\code{yvar}] Character; Name of column containing response variable
+
+\item[\code{xvars}] Character vector; Default is all column names that are not yvar;
+Name(s) of column(s) containing set of explanatory variables to select on.
+
+\item[\code{model}] Character; "lm" (default) or "glm"; Linear model or
+generalized linear model.
+
+\item[\code{glm\_family}] Character if model is "glm", NULL otherwise;
+"binomial", "gaussian" (default), "Gamma", "inverse.gaussian", "poisson", "quasi",
+"quasibinomial", "quasipoisson"; A family function that gives the error
+distribution and link function to be used in the model.
+
+\item[\code{criterion}] "AIC" (default) or "BIC"; Criterion to be minimized.
+
+\item[\code{pop\_size}] Integer; Default is 100; Number of chromosomes per generation.
+
+\item[\code{method\_select}] String; "rank" (linear rank selection) (default) or
+"tournament"; Method to select chromosomes for inclusion in mating pool.
+
+\item[\code{method\_recombine}] String; "onepoint" (default), "twopoint", "uniform";
+Type of crossover, at one point, at two points or uniformly (at all possible points).
+
+\item[\code{prob\_recombine}] Numeric, between 0 and 1; Default is 0.6;
+Probability of recombination.
+
+\item[\code{prob\_mutate}] Numeric, between 0 and 1; Default is 0.01;
+Probability of mutation.
+
+\item[\code{num\_max\_iterations}] Non-negative integer; Default is 100;
+Maximum number of iterations before algorithm is stopped.
+
+\item[\code{seed}] Non-negative integer; Default is 123; Random seed
+for reproducibility.
+
+\item[\code{do\_parallel}] Logical; Default is FALSE; Do in parallel?
+\end{ldescription}
+\end{Arguments}

@@ -1,0 +1,21 @@
+\BOOKMARK [1][-]{section.1}{Introduction}{}% 1
+\BOOKMARK [1][-]{section.2}{Code}{}% 2
+\BOOKMARK [1][-]{section.3}{Testing}{}% 3
+\BOOKMARK [1][-]{section.4}{Contributions}{}% 4
+\BOOKMARK [2][-]{subsection.4.1}{Code writing}{section.4}% 5
+\BOOKMARK [2][-]{subsection.4.2}{Code testing}{section.4}% 6
+\BOOKMARK [2][-]{subsection.4.3}{Documentation}{section.4}% 7
+\BOOKMARK [1][-]{section.5}{Appendix}{}% 8
+\BOOKMARK [2][-]{section*.6}{GA-package}{section.5}% 9
+\BOOKMARK [2][-]{section*.12}{select}{section.5}% 10
+\BOOKMARK [2][-]{section*.15}{evaluate\137once}{section.5}% 11
+\BOOKMARK [2][-]{section*.19}{evaluate}{section.5}% 12
+\BOOKMARK [2][-]{section*.23}{initialize}{section.5}% 13
+\BOOKMARK [2][-]{section*.27}{mutate}{section.5}% 14
+\BOOKMARK [2][-]{section*.31}{plot.ga}{section.5}% 15
+\BOOKMARK [2][-]{section*.35}{process\137data}{section.5}% 16
+\BOOKMARK [2][-]{section*.39}{recombine\137once}{section.5}% 17
+\BOOKMARK [2][-]{section*.43}{recombine}{section.5}% 18
+\BOOKMARK [2][-]{section*.47}{reproduce}{section.5}% 19
+\BOOKMARK [2][-]{section*.51}{select\137for\137mating}{section.5}% 20
+\BOOKMARK [2][-]{section*.55}{summary.ga}{section.5}% 21
